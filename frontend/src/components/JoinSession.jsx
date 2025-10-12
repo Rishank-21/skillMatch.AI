@@ -15,7 +15,7 @@ const JoinSession = ({ sessionId, userName, role = "user" }) => {
 
   // Initialize Socket.IO
   useEffect(() => {
-    socketRef.current = io("https://skillmatch-ai-backend.onrender.com", {
+    socketRef.current = io("http://localhost:5000", {
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: 5,

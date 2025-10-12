@@ -1,38 +1,10 @@
+
+
 import cron from "node-cron";
 import nodemailer from "nodemailer";
 import Session from "../models/sessionModel.js";
 import dotenv from "dotenv";
-import mongoose from "mongoose";
 dotenv.config();
-
-// helper: ensure mongoose connection is ready (try connect once if URI present)
-async function ensureMongooseReady(timeoutMs = 10000) {
-  if (mongoose.connection.readyState === 1) return;
-  if (process.env.MONGO_URI && mongoose.connection.readyState === 0) {
-    try {
-      await mongoose.connect(process.env.MONGO_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      });
-    } catch (err) {
-      // proceed to wait and potentially time out
-    }
-  }
-  return new Promise((resolve, reject) => {
-    if (mongoose.connection.readyState === 1) return resolve();
-    const onReady = () => {
-      clearTimeout(timer);
-      resolve();
-    };
-    const timer = setTimeout(() => {
-      mongoose.connection.removeListener("connected", onReady);
-      mongoose.connection.removeListener("open", onReady);
-      reject(new Error(`Mongoose not ready after ${timeoutMs}ms`));
-    }, timeoutMs);
-    mongoose.connection.once("connected", onReady);
-    mongoose.connection.once("open", onReady);
-  });
-}
 
 //helper
 const transporter = nodemailer.createTransport({
@@ -48,6 +20,7 @@ transporter.verify((err) => {
   else console.log("✅ Email transporter is ready");
 });
 
+
 function getSessionDateTime(session) {
   if (!session.sessionTime?.length) return null;
   const { date, time } = session.sessionTime[0];
@@ -62,16 +35,10 @@ function getSessionDateTime(session) {
   return sessionDate;
 }
 
-cron.schedule("* * * * *", async () => {
-  // wait for DB; skip this run if not ready
-  try {
-    await ensureMongooseReady(10000);
-  } catch (err) {
-    console.error("❌ Skipping reminder cron: DB not ready:", err.message);
-    return;
-  }
 
+cron.schedule("* * * * *", async () => {
   const now = new Date();
+  
 
   try {
     const sessions = await Session.find()
@@ -88,13 +55,12 @@ cron.schedule("* * * * *", async () => {
       const diffMs = sessionDateTime - now;
       const diffMinutes = diffMs / (1000 * 60);
 
-      if (
-        diffMinutes <= 15 &&
-        diffMinutes > 14 &&
-        !session.fifteenMinReminderSent
-      ) {
+      
+      if (diffMinutes <= 15 && diffMinutes > 14 && !session.fifteenMinReminderSent) {
         const userEmail = session.user.email;
         const mentorEmail = session.mentor?.user?.email;
+
+       
 
         await transporter.sendMail({
           from: `"SkillMatch.AI" <${process.env.EMAIL}>`,
@@ -116,9 +82,12 @@ cron.schedule("* * * * *", async () => {
         await session.save();
       }
 
+      
       if (Math.abs(diffMinutes) < 1 && !session.isReminderSent) {
         const userEmail = session.user.email;
         const mentorEmail = session.mentor?.user?.email;
+
+      
 
         await transporter.sendMail({
           from: `"SkillMatch.AI" <${process.env.EMAIL}>`,
