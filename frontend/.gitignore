@@ -38,3 +38,17 @@ dist-ssr
 # 4) git fetch origin
 # 5) git rebase origin/main    (resolve conflicts if any)
 # 6) git push -u origin main
+
+# Quick search examples to find occurrences of sessions.find / Session.find in the project:
+# Windows CMD (from repo root):
+#   findstr /spin /c:"sessions.find(" *.*
+#   findstr /spin /c:"Session.find(" *.*
+#
+# PowerShell:
+#   Select-String -Path .\**\*.js -Pattern "sessions\.find\(" -SimpleMatch
+#   Select-String -Path .\**\*.js -Pattern "Session\.find\(" -SimpleMatch
+#
+# ripgrep (rg):
+#   rg "sessions\.find\(|Session\.find\("
+#
+# Tip: also search for ".find(" combined with your Session model name if names differ.
