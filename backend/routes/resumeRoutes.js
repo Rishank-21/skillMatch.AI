@@ -1,0 +1,16 @@
+
+
+import express from "express";
+import multer from "multer";
+import { parseResume, saveParsedResume, userResumeController } from "../controllers/ResumeController.js";
+import { isAuth } from "../middlewares/isAuth.js";
+
+const router = express.Router();
+// const upload = multer({ storage: multer.memoryStorage() });hleper
+const upload = multer({ dest: "uploads/" }); 
+router.post("/parse", isAuth, upload.single("resume"), parseResume);
+router.post("/save", isAuth, saveParsedResume);
+
+router.get('/me', isAuth, userResumeController)
+
+export default router;
