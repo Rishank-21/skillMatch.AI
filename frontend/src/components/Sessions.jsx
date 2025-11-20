@@ -1,3 +1,6 @@
+
+
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Nav from "./Nav";
@@ -12,21 +15,20 @@ import {
   X,
   Send,
   Mail,
+  PhoneOff,
+  DollarSign,
 } from "lucide-react";
-import { LuIndianRupee } from "react-icons/lu";
 import axios from "axios";
 import JoinSession from "./JoinSession";
 import { useSelector } from "react-redux";
-import { PhoneOff } from "lucide-react";
+
 const Sessions = () => {
   const userData = useSelector((state) => state.user.userData);
+  
   const statusStyles = {
-    upcoming:
-      "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200",
-    completed:
-      "bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 border border-blue-200",
-    cancelled:
-      "bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700 border border-gray-200",
+    upcoming: "bg-green-500/20 text-green-400 border border-green-500/50",
+    completed: "bg-blue-500/20 text-blue-400 border border-blue-500/50",
+    cancelled: "bg-slate-700 text-slate-400 border border-slate-600",
   };
 
   const [sessions, setSessions] = useState([]);
@@ -34,12 +36,9 @@ const Sessions = () => {
   const [emailModal, setEmailModal] = useState(false);
   const [videoModal, setVideoModal] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
-  const [emailData, setEmailData] = useState({
-    subject: "",
-    message: "",
-  });
+  const [emailData, setEmailData] = useState({ subject: "", message: "" });
   const [currentUser, setCurrentUser] = useState(null);
-//helper
+
   const navigate = useNavigate();
 
   const canJoinSession = (session) => {
@@ -60,7 +59,6 @@ const Sessions = () => {
   };
 
   const handleJoinSession = async (session) => {
-    
     setSelectedSession(session);
     setVideoModal(true);
   };
@@ -133,7 +131,6 @@ const Sessions = () => {
     setEmailData({ subject: "", message: "" });
   };
 
-  // Sort sessions based on joinability and status
   const sortedSessions = [...sessions].sort((a, b) => {
     const aJoinable = a.status === "upcoming" && canJoinSession(a);
     const bJoinable = b.status === "upcoming" && canJoinSession(b);
@@ -161,7 +158,7 @@ const Sessions = () => {
 
   const handleSendEmail = async () => {
     try {
-      const result = await axios.post(
+      await axios.post(
         `${import.meta.env.VITE_API_URL}/session/send-mail`,
         {
           to: selectedSession?.mentor?.user?.email,
@@ -171,16 +168,14 @@ const Sessions = () => {
         },
         { withCredentials: true }
       );
-    
       handleCloseModal();
     } catch (error) {
       console.error("Error sending email:", error);
     }
   };
 
-  // helper: if profileImage is a full URL use it, otherwise prepend VITE_IMAGE_URL
   const getProfileImageSrc = (profileImage) => {
-    if (!profileImage) return "/placeholder-avatar.png"; // optional fallback image in public folder
+    if (!profileImage) return "/placeholder-avatar.png";
     if (/^https?:\/\//i.test(profileImage)) return profileImage;
     const base = (import.meta.env.VITE_IMAGE_URL || "").replace(/\/$/, "");
     return `${base}/${profileImage.replace(/\\/g, "/").replace(/^\//, "")}`;
@@ -188,33 +183,40 @@ const Sessions = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50">
+      <div className="min-h-screen bg-slate-950">
         <Nav />
         <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-violet-600"></div>
+          <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 mt-16">
+    <div className="min-h-screen bg-slate-950 text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
+        <div className="absolute top-0 -right-4 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{animationDelay: '2s'}}></div>
+        <div className="absolute -bottom-8 left-20 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{animationDelay: '4s'}}></div>
+      </div>
+
       <Nav />
 
       {/* Email Modal */}
       {emailModal && selectedSession && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all duration-300 scale-100">
-            <div className="bg-gradient-to-r from-violet-500 to-purple-600 p-6 rounded-t-2xl flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl">
+            <div className="bg-gradient-to-r from-cyan-500 to-purple-600 p-6 rounded-t-3xl flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="bg-white bg-opacity-20 p-2 rounded-lg">
+                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
                   <Mail className="w-6 h-6 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-white">Send Message</h2>
               </div>
               <button
                 onClick={handleCloseModal}
-                className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-all duration-200"
+                className="text-white hover:bg-white/20 p-2 rounded-lg transition-all duration-200"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -222,31 +224,31 @@ const Sessions = () => {
 
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   From (Your Email)
                 </label>
                 <input
                   type="email"
                   value={selectedSession?.user.email || ""}
                   disabled
-                  className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-600 cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   To (Mentor Email)
                 </label>
                 <input
                   type="email"
                   value={selectedSession?.mentor?.user?.email || ""}
                   disabled
-                  className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-600 cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   Subject
                 </label>
                 <input
@@ -256,12 +258,12 @@ const Sessions = () => {
                     setEmailData({ ...emailData, subject: e.target.value })
                   }
                   placeholder="Enter email subject..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all duration-200"
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200 text-white placeholder-slate-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   Message
                 </label>
                 <textarea
@@ -271,20 +273,20 @@ const Sessions = () => {
                   }
                   placeholder="Type your message here..."
                   rows="6"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all duration-200 resize-none"
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200 resize-none text-white placeholder-slate-500"
                 ></textarea>
               </div>
 
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={handleCloseModal}
-                  className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
+                  className="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition-all duration-300 hover:scale-105"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSendEmail}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105"
                 >
                   <Send className="w-5 h-5" />
                   Send Message
@@ -296,39 +298,10 @@ const Sessions = () => {
       )}
 
       {/* Video Call Modal */}
-      {/* {videoModal && selectedSession && currentUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4 h-screen w-screen">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-auto">
-            <div className="bg-gradient-to-r from-violet-500 to-purple-600 p-4 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
-              <div className="flex items-center gap-3">
-                <Video className="w-6 h-6 text-white" />
-                <h2 className="text-xl font-bold text-white">
-                  Video Call with {selectedSession?.mentor?.user?.username}
-                </h2>
-              </div>
-              <button
-                onClick={handleCloseVideoModal}
-                className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-all duration-200"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6">
-              <JoinSession
-                sessionId={selectedSession._id}
-                userName={currentUser.username}
-              />
-            </div>
-          </div>
-        </div>
-      )} */}
-
       {videoModal && selectedSession && currentUser && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden border border-violet-500/20 animate-scaleIn">
-            {/* Header */}
-            <div className="relative bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 p-6 shadow-lg">
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden border border-cyan-500/20">
+            <div className="relative bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl shadow-lg">
@@ -338,7 +311,7 @@ const Sessions = () => {
                     <h2 className="text-2xl font-bold text-white tracking-tight">
                       Video Session
                     </h2>
-                    <p className="text-violet-100 text-sm mt-1 flex items-center gap-2">
+                    <p className="text-cyan-100 text-sm mt-1 flex items-center gap-2">
                       <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                       Connected with {selectedSession?.mentor?.user?.username}
                     </p>
@@ -347,19 +320,15 @@ const Sessions = () => {
                 <button
                   onClick={handleCloseVideoModal}
                   className="group bg-white/10 hover:bg-white/20 backdrop-blur-sm p-3 rounded-xl transition-all duration-300 hover:rotate-90 hover:scale-110"
-                  aria-label="Close video call"
                 >
                   <X className="w-6 h-6 text-white" />
                 </button>
               </div>
-
-              {/* Decorative gradient line */}
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
             </div>
 
-            {/* Video Content Area */}
-            <div className="p-8 bg-gradient-to-b from-gray-900 to-black min-h-[600px]">
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-inner border border-violet-500/10">
+            <div className="p-8 bg-gradient-to-b from-slate-900 to-black min-h-[600px]">
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-inner border border-cyan-500/10">
                 <JoinSession
                   sessionId={selectedSession._id}
                   userName={currentUser.username}
@@ -369,11 +338,10 @@ const Sessions = () => {
               </div>
             </div>
 
-            {/* Footer with End Call Button */}
-            <div className="bg-gray-900/80 backdrop-blur-sm px-8 py-4 border-t border-violet-500/10 flex items-center justify-between">
-              <p className="text-gray-400 text-sm">
+            <div className="bg-slate-900/80 backdrop-blur-sm px-8 py-4 border-t border-cyan-500/10 flex items-center justify-between">
+              <p className="text-slate-400 text-sm">
                 Session ID:{" "}
-                <span className="text-violet-400 font-mono">
+                <span className="text-cyan-400 font-mono">
                   {selectedSession._id.slice(-8)}
                 </span>
               </p>
@@ -390,19 +358,19 @@ const Sessions = () => {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-24">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
               Your Sessions
             </h1>
-            <p className="text-gray-600 text-lg">
+            <p className="text-slate-400 text-lg">
               Manage and join your upcoming mentorship sessions
             </p>
           </div>
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105"
           >
             <Home className="w-5 h-5" />
             Home
@@ -411,50 +379,50 @@ const Sessions = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-violet-100 hover:shadow-xl transition-shadow duration-300">
+          <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm font-medium mb-1">
+                <p className="text-slate-400 text-sm font-medium mb-1">
                   Total Sessions
                 </p>
-                <p className="text-3xl font-bold text-violet-600">
+                <p className="text-3xl font-bold text-cyan-400">
                   {sessions.length}
                 </p>
               </div>
-              <div className="bg-violet-100 p-3 rounded-xl">
-                <Calendar className="w-8 h-8 text-violet-600" />
+              <div className="bg-cyan-500/20 p-3 rounded-xl border border-cyan-500/30">
+                <Calendar className="w-8 h-8 text-cyan-400" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-purple-100 hover:shadow-xl transition-shadow duration-300">
+          <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm font-medium mb-1">
+                <p className="text-slate-400 text-sm font-medium mb-1">
                   Total Spent
                 </p>
-                <p className="text-3xl font-bold text-purple-600">
+                <p className="text-3xl font-bold text-purple-400">
                   ₹{sessions.reduce((acc, s) => acc + (s.amountPaid || 0), 0)}
                 </p>
               </div>
-              <div className="bg-purple-100 p-3 rounded-xl">
-                <LuIndianRupee className="w-8 h-8 text-purple-600" />
+              <div className="bg-purple-500/20 p-3 rounded-xl border border-purple-500/30">
+                <DollarSign className="w-8 h-8 text-purple-400" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-indigo-100 hover:shadow-xl transition-shadow duration-300">
+          <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 hover:border-pink-500/50 hover:shadow-xl hover:shadow-pink-500/10 transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm font-medium mb-1">
+                <p className="text-slate-400 text-sm font-medium mb-1">
                   Mentors
                 </p>
-                <p className="text-3xl font-bold text-indigo-600">
+                <p className="text-3xl font-bold text-pink-400">
                   {uniqueMentors}
                 </p>
               </div>
-              <div className="bg-indigo-100 p-3 rounded-xl">
-                <User className="w-8 h-8 text-indigo-600" />
+              <div className="bg-pink-500/20 p-3 rounded-xl border border-pink-500/30">
+                <User className="w-8 h-8 text-pink-400" />
               </div>
             </div>
           </div>
@@ -470,50 +438,48 @@ const Sessions = () => {
               return (
                 <div
                   key={session._id}
-                  className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 group"
+                  className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 overflow-hidden border border-slate-800 hover:border-cyan-500/50 group"
                 >
                   <div className="p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                       <div className="flex items-start gap-4 flex-1">
                         <img
-                          src={getProfileImageSrc(
-                            session?.mentor?.profileImage
-                          )}
+                          src={getProfileImageSrc(session?.mentor?.profileImage)}
                           alt={session.mentor?.name || "Mentor"}
-                          className="w-16 h-16 rounded-xl object-cover ring-4 ring-violet-100"
+                          className="w-16 h-16 rounded-xl object-cover ring-4 ring-slate-700 group-hover:ring-cyan-500 transition-all"
                         />
                         <div className="flex-1">
-                          <h3 className="text-xl font-bold text-gray-900 mb-1">
+                          <h3 className="text-xl font-bold text-white mb-1">
                             {session.mentor.user.username}
                           </h3>
-                          <p className="text-violet-600 text-sm font-medium mb-2">
+                          <p className="text-cyan-400 text-sm font-medium mb-2">
                             {session.mentor?.title ||
                               session.mentor?.skills?.[0] ||
                               "Mentor"}
                           </p>
-                          <p className="text-gray-700 font-medium mb-3">
+                          <p className="text-white font-medium mb-3">
                             Session Price: ₹{session.amountPaid}
                           </p>
 
                           <div className="flex flex-wrap gap-4 text-sm">
                             {session.sessionTime?.[0] && (
                               <>
-                                <div className="flex items-center gap-2 text-gray-600">
-                                  <Calendar className="w-4 h-4 text-violet-500" />
+                                <div className="flex items-center gap-2 text-slate-400">
+                                  <Calendar className="w-4 h-4 text-cyan-400" />
                                   <span>
                                     {formatDate(session.sessionTime[0].date)}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 text-gray-600">
-                                  <Clock className="w-4 h-4 text-purple-500" />
+                                <div className="flex items-center gap-2 text-slate-400">
+                                  <Clock className="w-4 h-4 text-purple-400" />
                                   <span>
                                     {formatTime(session.sessionTime[0].time)}
                                   </span>
                                 </div>
                               </>
                             )}
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Video className="w-4 h-4 text-indigo-500" />
+                            <div className="flex items-center gap-2 text-slate-400">
+                              <Video className="w-4 h-4 text-pink-400" />
                               <span>Video Call</span>
                             </div>
                           </div>
@@ -533,7 +499,7 @@ const Sessions = () => {
                           </span>
 
                           {isJoinable && (
-                            <span className="animate-pulse inline-flex items-center px-3 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-full">
+                            <span className="animate-pulse inline-flex items-center px-3 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded-full border border-red-500/50">
                               • LIVE NOW
                             </span>
                           )}
@@ -542,7 +508,7 @@ const Sessions = () => {
                         <div className="flex gap-3">
                           <button
                             onClick={() => handleMessageClick(session)}
-                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-300 hover:scale-105 cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition-all duration-300 hover:scale-105"
                           >
                             <MessageSquare className="w-4 h-4" />
                             Message
@@ -554,8 +520,8 @@ const Sessions = () => {
                               onClick={() => handleJoinSession(session)}
                               className={`flex items-center gap-2 px-6 py-2 rounded-xl font-semibold shadow-lg transition-all duration-300 group ${
                                 isJoinable
-                                  ? "bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white hover:shadow-xl hover:scale-105 cursor-pointer"
-                                  : "bg-gray-400 text-gray-700 cursor-not-allowed"
+                                  ? "bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white hover:shadow-purple-500/50 hover:scale-105"
+                                  : "bg-slate-700 text-slate-500 cursor-not-allowed"
                               }`}
                             >
                               Join Session
@@ -567,25 +533,25 @@ const Sessions = () => {
                     </div>
                   </div>
 
-                  <div className="h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
+                  <div className="h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
                 </div>
               );
             })
           ) : (
-            <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-              <div className="bg-gradient-to-br from-violet-100 to-purple-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Calendar className="w-12 h-12 text-violet-600" />
+            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-lg p-12 text-center">
+              <div className="bg-gradient-to-br from-cyan-500/20 to-purple-500/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 border border-cyan-500/30">
+                <Calendar className="w-12 h-12 text-cyan-400" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              <h3 className="text-2xl font-bold text-white mb-3">
                 No Sessions Yet
               </h3>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              <p className="text-slate-400 mb-6 max-w-md mx-auto">
                 You don't have any scheduled sessions yet. Book a session with a
                 mentor to get started!
               </p>
               <button
                 onClick={() => navigate("/")}
-                className="px-8 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105"
               >
                 Browse Mentors
               </button>
@@ -593,6 +559,16 @@ const Sessions = () => {
           )}
         </div>
       </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 0.1; }
+          50% { opacity: 0.15; }
+        }
+        .animate-pulse {
+          animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+      `}</style>
     </div>
   );
 };

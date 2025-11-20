@@ -11,6 +11,7 @@ import UploadResume from './components/UploadResume.jsx';
 import FindMentors from './components/FindMentors.jsx';
 import PaymentSuccess from './components/PaymentSuccess.jsx';
 import Sessions from './components/Sessions.jsx';
+import LandingPage from './pages/LandingPage.jsx';
 const App = () => {
   useGetCurrentUser()
   useGetMentorData()
@@ -23,14 +24,16 @@ const App = () => {
 };
   //helper
   return (
+     
       <Routes>
-        <Route path="/" element={userData ? <Home scrollToId = {scrollToId} /> : <Navigate to={"/login"}/> }/>
-        <Route path="/register" element={!userData ? <Register /> : <Navigate to={"/"} />} />
-        <Route path="/login" element={!userData ? <Login /> : <Navigate to={"/"} />} />
-        <Route path="/upload-resume/:userId" element={ !userData ? <Login /> : <UploadResume />}/>
-        <Route path='/mentors/:userId' element = {!userData ? <Login/> : <FindMentors/>}/>
-        <Route path='/payment-success' element = {<PaymentSuccess/>}/>
-        <Route path='/sessions/:userId' element = {<Sessions/>}/>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/dashboard" element={userData ? <Home scrollToId={scrollToId} /> : <Navigate to="/login" />} />
+      <Route path="/register" element={!userData ? <Register /> : <Navigate to="/dashboard" />} />
+      <Route path="/login" element={!userData ? <Login /> : <Navigate to="/dashboard" />} />
+      <Route path="/upload-resume/:userId" element={!userData ? <Login /> : <UploadResume />} />
+      <Route path='/mentors/:userId' element={!userData ? <Login /> : <FindMentors />} />
+      <Route path='/payment-success' element={<PaymentSuccess />} />
+      <Route path='/sessions/:userId' element={<Sessions />} />
       </Routes>
 
   )

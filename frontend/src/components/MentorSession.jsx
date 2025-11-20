@@ -1,19 +1,19 @@
+
+
 import React, { useEffect, useState } from "react";
 import Nav from "./Nav";
-import { Calendar, Clock, Video, User, X, PhoneOff } from "lucide-react";
+import { Calendar, Clock, Video, User, X, PhoneOff, Mic, MicOff, VideoOff } from "lucide-react";
 import axios from "axios";
 import JoinSession from "./JoinSession";
 import { useSelector } from "react-redux";
+
 const MentorSessions = () => {
   const mentorData = useSelector((state) => state.mentor.mentorData);
 
   const statusStyles = {
-    upcoming:
-      "bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 border border-blue-200",
-    completed:
-      "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200",
-    cancelled:
-      "bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-700 border border-yellow-200",
+    upcoming: "bg-green-500/20 text-green-400 border border-green-500/50",
+    completed: "bg-blue-500/20 text-blue-400 border border-blue-500/50",
+    cancelled: "bg-slate-700 text-slate-400 border border-slate-600",
   };
 
   const [sessions, setSessions] = useState([]);
@@ -21,11 +21,7 @@ const MentorSessions = () => {
   const [videoModal, setVideoModal] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
 
-
-  // Normalize status & check if session is joinable
   const canJoinSession = (session) => {
     if (!session.sessionTime?.[0]) return false;
 
@@ -45,7 +41,7 @@ const MentorSessions = () => {
 
   const handleJoinSession = (session) => {
     const status = session.status?.toLowerCase();
-    if (status !== "upcoming") return; // prevent joining non-upcoming sessions
+    if (status !== "upcoming") return;
     setSelectedSession(session);
     setVideoModal(true);
   };
@@ -98,7 +94,6 @@ const MentorSessions = () => {
     return `${hour12}:${minutes} ${ampm}`;
   };
 
-  // Sort sessions: joinable > upcoming > completed > cancelled
   const sortedSessions = [...sessions].sort((a, b) => {
     const aStatus = a.status?.toLowerCase();
     const bStatus = b.status?.toLowerCase();
@@ -114,90 +109,102 @@ const MentorSessions = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50">
+      <div className="min-h-screen bg-slate-950">
         <Nav />
         <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-violet-600"></div>
+          <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 mt-16">
+    <div className="min-h-screen bg-slate-950 text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
+        <div className="absolute top-0 -right-4 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{animationDelay: '2s'}}></div>
+        <div className="absolute -bottom-8 left-20 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{animationDelay: '4s'}}></div>
+      </div>
+
       <Nav />
 
-    
-    
-{videoModal && selectedSession && currentUser && (
-  <div className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-    <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden border border-cyan-500/20 animate-scaleIn">
-      {/* Header helper */}
-      <div className="relative bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 p-6 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl shadow-lg">
-              <Video className="w-7 h-7 text-white" />
+      {/* Full Screen Video Modal */}
+      {videoModal && selectedSession && currentUser && (
+        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+          {/* Top Bar - Reduced Height */}
+          <div className="bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 px-6 py-3 flex items-center justify-between shadow-lg z-20">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+                <Video className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Mentoring Session</h2>
+                <p className="text-cyan-100 text-xs flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                  {selectedSession?.user?.username}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white tracking-tight">
-                Mentoring Session
-              </h2>
-              <p className="text-cyan-100 text-sm mt-1 flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                Connected with {selectedSession?.user?.username}
-              </p>
+            <button
+              onClick={handleCloseVideoModal}
+              className="bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-all duration-200"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
+          {/* Video Content - Maximum Height */}
+          <div className="flex-1 bg-black p-2 overflow-hidden">
+            <div className="w-full h-full rounded-lg overflow-hidden">
+              <JoinSession
+                sessionId={selectedSession._id}
+                userName={currentUser.username}
+                showDebug={false}
+                role="mentor"
+              />
             </div>
           </div>
-          <button
-            onClick={handleCloseVideoModal}
-            className="group bg-white/10 hover:bg-white/20 backdrop-blur-sm p-3 rounded-xl transition-all duration-300 hover:rotate-90 hover:scale-110"
-            aria-label="Close video call"
-          >
-            <X className="w-6 h-6 text-white" />
-          </button>
-        </div>
-        
-        {/* Decorative gradient line */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
-      </div>
 
-      {/* Video Content Area */}
-      <div className="p-8 bg-gradient-to-b from-gray-900 to-black min-h-[600px]">
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-inner border border-cyan-500/10">
-          <JoinSession
-            sessionId={selectedSession._id}
-            userName={currentUser.username}
-            showDebug={false}
-            role="mentor"
-          />
-        </div>
-      </div>
+          {/* Bottom Controls - Compact */}
+          <div className="bg-slate-900/95 px-6 py-3 flex items-center justify-between border-t border-cyan-500/10 z-20">
+            <p className="text-slate-400 text-xs">
+              ID: <span className="text-cyan-400 font-mono">{selectedSession._id.slice(-8)}</span>
+            </p>
+            
+            <div className="flex items-center gap-4">
+              {/* Mic Button */}
+              <button className="p-3 bg-slate-700/80 hover:bg-slate-700 rounded-full transition-all duration-200">
+                <Mic className="w-5 h-5 text-white" />
+              </button>
 
-      {/* Footer with End Call Button */}
-      <div className="bg-gray-900/80 backdrop-blur-sm px-8 py-4 border-t border-cyan-500/10 flex items-center justify-between">
-        <p className="text-gray-400 text-sm">
-          Session ID: <span className="text-cyan-400 font-mono">{selectedSession._id.slice(-8)}</span>
-        </p>
-        
-        <button
-          onClick={handleCloseVideoModal}
-          className="group flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-red-500/50"
-        >
-          <PhoneOff className="w-5 h-5 group-hover:animate-bounce" />
-          End Call
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+              {/* End Call */}
+              <button
+                onClick={handleCloseVideoModal}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-full font-semibold transition-all duration-200 shadow-lg hover:shadow-red-500/50"
+              >
+                <PhoneOff className="w-4 h-4" />
+                End Call
+              </button>
+
+              {/* Video Button */}
+              <button className="p-3 bg-slate-700/80 hover:bg-slate-700 rounded-full transition-all duration-200">
+                <Video className="w-5 h-5 text-white" />
+              </button>
+            </div>
+
+            <div className="w-20"></div> {/* Spacer for balance */}
+          </div>
+        </div>
+      )}
+
       {/* Sessions List */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-20">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
             My Sessions
           </h1>
-          <p className="text-gray-600 text-lg">View and join your mentorship sessions</p>
+          <p className="text-slate-400 text-lg">View and join your mentorship sessions</p>
         </div>
 
         <div className="space-y-6">
@@ -209,36 +216,36 @@ const MentorSessions = () => {
               return (
                 <div
                   key={session._id}
-                  className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 group"
+                  className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 overflow-hidden border border-slate-800 hover:border-cyan-500/50 group"
                 >
                   <div className="p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center ring-4 ring-blue-50">
-                        <User className="w-8 h-8 text-blue-600" />
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center ring-4 ring-cyan-500/10 border border-cyan-500/30">
+                        <User className="w-8 h-8 text-cyan-400" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">
+                        <h3 className="text-xl font-bold text-white mb-1">
                           {session.user?.username || "Unknown User"}
                         </h3>
-                        <p className="text-gray-600 text-sm font-medium mb-2">
+                        <p className="text-slate-400 text-sm font-medium mb-3">
                           {session.user?.email || "No email"}
                         </p>
                         {session.sessionTime?.[0] && (
                           <div className="flex flex-wrap gap-4 text-sm">
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Calendar className="w-4 h-4 text-blue-500" />
+                            <div className="flex items-center gap-2 text-slate-400">
+                              <Calendar className="w-4 h-4 text-cyan-400" />
                               <span>{formatDate(session.sessionTime[0].date)}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Clock className="w-4 h-4 text-cyan-500" />
+                            <div className="flex items-center gap-2 text-slate-400">
+                              <Clock className="w-4 h-4 text-purple-400" />
                               <span>{formatTime(session.sessionTime[0].time)}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-400">
+                              <Video className="w-4 h-4 text-pink-400" />
+                              <span>Video Call</span>
                             </div>
                           </div>
                         )}
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Video className="w-4 h-4 text-indigo-500" />
-                          <span>Video Call</span>
-                        </div>
                       </div>
                     </div>
 
@@ -253,7 +260,7 @@ const MentorSessions = () => {
                         </span>
 
                         {isJoinable && (
-                          <span className="animate-pulse inline-flex items-center px-3 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-full">
+                          <span className="animate-pulse inline-flex items-center px-3 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded-full border border-red-500/50">
                             • LIVE NOW
                           </span>
                         )}
@@ -265,8 +272,8 @@ const MentorSessions = () => {
                           onClick={() => handleJoinSession(session)}
                           className={`flex items-center gap-2 px-6 py-2 rounded-xl font-semibold shadow-lg transition-all duration-300 ${
                             isJoinable
-                              ? "bg-gradient-to-r from-blue-500 to-cyan-600 text-white hover:from-blue-600 hover:to-cyan-700 hover:shadow-xl hover:scale-105 cursor-pointer"
-                              : "bg-gray-400 text-gray-700 cursor-not-allowed"
+                              ? "bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white hover:shadow-purple-500/50 hover:scale-105"
+                              : "bg-slate-700 text-slate-500 cursor-not-allowed"
                           }`}
                         >
                           <Video className="w-4 h-4" />
@@ -275,23 +282,34 @@ const MentorSessions = () => {
                       )}
                     </div>
                   </div>
+
+                  <div className="h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
                 </div>
               );
             })
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-2xl mb-4">
-                <Calendar className="text-gray-400" size={28} />
+            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-12 text-center">
+              <div className="bg-gradient-to-br from-cyan-500/20 to-purple-500/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-cyan-500/30">
+                <Calendar className="text-cyan-400" size={28} />
               </div>
-              <h3 className="font-semibold text-gray-600 mb-2">No sessions yet</h3>
-              <p className="text-sm">Your mentoring sessions will appear here</p>
+              <h3 className="font-semibold text-white mb-2">No sessions yet</h3>
+              <p className="text-sm text-slate-400">Your mentoring sessions will appear here</p>
             </div>
           )}
         </div>
       </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 0.1; }
+          50% { opacity: 0.15; }
+        }
+        .animate-pulse {
+          animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+      `}</style>
     </div>
   );
 };
 
 export default MentorSessions;
-

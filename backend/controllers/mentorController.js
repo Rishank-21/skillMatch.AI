@@ -111,94 +111,116 @@ export const completeProfile = async (req, res) => {
   }
 };
 
-export const updateMentorData = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty())
-    return res.status(400).json({ errors: errors.array() });
+// export const updateMentorData = async (req, res) => {
+//   const errors = validationResult(req);
+//   if (!errors.isEmpty())
+//     return res.status(400).json({ errors: errors.array() });
 
-  try {
-    let { skills, availableSlots, bio, fee } = req.body;
-    const uploadedFile = req.file; // may include .buffer
-    let profileImageUrl;
+//   try {
+//     let { skills, availableSlots, bio, fee } = req.body;
+//     const uploadedFile = req.file; // may include .buffer
+//     let profileImageUrl;
 
-    // If a new file is provided, upload to Cloudinary
-    if (uploadedFile) {
-      try {
-        const uploadedUrl = await uploadOnCloudinary(uploadedFile);
-        if (!uploadedUrl)
-          return res
-            .status(500)
-            .json({ message: "Failed to upload profile image" });
-        profileImageUrl = uploadedUrl;
-      } catch (err) {
-        return res
-          .status(500)
-          .json({ message: "Image upload error", error: err.message });
-      }
-    }
+//     // If a new file is provided, upload to Cloudinary
+//     if (uploadedFile) {
+//       try {
+//         const uploadedUrl = await uploadOnCloudinary(uploadedFile);
+//         if (!uploadedUrl)
+//           return res
+//             .status(500)
+//             .json({ message: "Failed to upload profile image" });
+//         profileImageUrl = uploadedUrl;
+//       } catch (err) {
+//         return res
+//           .status(500)
+//           .json({ message: "Image upload error", error: err.message });
+//       }
+//     }
 
-    // Parse skills
-    if (typeof skills === "string") {
-      try {
-        skills = JSON.parse(skills);
-      } catch {
-        skills = skills
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-      }
-    }
+//     // Parse skills
+//     if (typeof skills === "string") {
+//       try {
+//         skills = JSON.parse(skills);
+//       } catch {
+//         skills = skills
+//           .split(",")
+//           .map((s) => s.trim())
+//           .filter(Boolean);
+//       }
+//     }
 
-    // Parse slots
-    if (typeof availableSlots === "string") {
-      try {
-        availableSlots = JSON.parse(availableSlots);
-      } catch {
-        availableSlots = [];
-      }
-    }
+//     // Parse slots
+//     // if (typeof availableSlots === "string") {
+//     //   try {
+//     //     availableSlots = JSON.parse(availableSlots);
+//     //   } catch {
+//     //     availableSlots = [];
+//     //   }
+//     // }
 
-    if (Array.isArray(availableSlots)) {
-      const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
-      availableSlots = availableSlots.map((slot, i) => {
-        const s =
-          typeof slot === "string"
-            ? { date: slot.split(" ")[0], time: slot.split(" ")[1] }
-            : slot;
-        if (
-          !s?.date ||
-          !s?.time ||
-          !/^\d{4}-\d{2}-\d{2}$/.test(s.date) ||
-          isNaN(Date.parse(s.date)) ||
-          !timeRegex.test(s.time)
-        ) {
-          throw new Error(`Slot ${i} invalid`);
-        }
-        return { date: new Date(s.date), time: s.time };
-      });
-    } else availableSlots = [];
+//     // if (Array.isArray(availableSlots)) {
+//     //   const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+//     //   availableSlots = availableSlots.map((slot, i) => {
+//     //     const s =
+//     //       typeof slot === "string"
+//     //         ? { date: slot.split(" ")[0], time: slot.split(" ")[1] }
+//     //         : slot;
+//     //     if (
+//     //       !s?.date ||
+//     //       !s?.time ||
+//     //       !/^\d{4}-\d{2}-\d{2}$/.test(s.date) ||
+//     //       isNaN(Date.parse(s.date)) ||
+//     //       !timeRegex.test(s.time)
+//     //     ) {
+//     //       throw new Error(`Slot ${i} invalid`);
+//     //     }
+//     //     return { date: new Date(s.date), time: s.time };
+//     //   });
+//     // } else availableSlots = [];
 
-    // Build update object to avoid overwriting profileImage when not provided
-    const updateData = { skills, availableSlots, bio, fee };
-    if (profileImageUrl) updateData.profileImage = profileImageUrl;
+//     if (Array.isArray(availableSlots)) {
+//   const parsed = [];
+//   const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-    const mentor = await Mentor.findOneAndUpdate(
-      { user: req.user.id },
-      updateData,
-      { new: true }
-    );
+//   for (const slot of availableSlots) {
+//     const s = {
+//       date: slot.date,
+//       time: slot.time,
+//     };
 
-    if (!mentor) return res.status(404).json({ message: "Mentor not found" });
-    return res
-      .status(200)
-      .json({ message: "Mentor data updated successfully", mentor });
-  } catch (error) {
-    return res.status(500).json({
-      message: "Server error during update mentor data",
-      error: error.message,
-    });
-  }
-};
+//     if (!s.date || !/^\d{4}-\d{2}-\d{2}$/.test(s.date))
+//       return res.status(400).json({ message: "Invalid date format" });
+
+//     if (!timeRegex.test(s.time))
+//       return res.status(400).json({ message: "Invalid time format" });
+
+//     parsed.push(s);
+//   }
+//   availableSlots = parsed;
+// }
+
+
+//     // Build update object to avoid overwriting profileImage when not provided
+//     const updateData = { skills, availableSlots, bio, fee };
+//     if (profileImageUrl) updateData.profileImage = profileImageUrl;
+
+//     const mentor = await Mentor.findOneAndUpdate(
+//       { user: req.user.id },
+//       updateData,
+//       { new: true }
+//     );
+
+//     if (!mentor) return res.status(404).json({ message: "Mentor not found" });
+//     return res
+//       .status(200)
+//       .json({ message: "Mentor data updated successfully", mentor });
+//   } catch (error) {
+//     return res.status(500).json({
+//       message: "Server error during update mentor data",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // export const updateMentorData = async (req, res) => {
 //   try {
@@ -227,6 +249,132 @@ export const updateMentorData = async (req, res) => {
 //     res.status(500).json({ message: "Server error", error });
 //   }
 // };
+
+
+export const updateMentorData = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty())
+    return res.status(400).json({ errors: errors.array() });
+
+  try {
+    let { skills, availableSlots, bio, fee } = req.body;
+    const uploadedFile = req.file;
+    let profileImageUrl;
+
+    // ==========================
+    // 📌 1. Upload profile image
+    // ==========================
+    if (uploadedFile) {
+      try {
+        const uploadedUrl = await uploadOnCloudinary(uploadedFile);
+        if (!uploadedUrl)
+          return res
+            .status(500)
+            .json({ message: "Failed to upload profile image" });
+        profileImageUrl = uploadedUrl;
+      } catch (err) {
+        return res.status(500).json({
+          message: "Image upload error",
+          error: err.message,
+        });
+      }
+    }
+
+    // ==========================
+    // 📌 2. Parse skills
+    // ==========================
+    if (typeof skills === "string") {
+      try {
+        skills = JSON.parse(skills);
+      } catch {
+        skills = skills
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
+
+    // ==========================
+    // 📌 3. Parse availableSlots (MAIN FIX)
+    // ==========================
+    if (typeof availableSlots === "string") {
+      try {
+        availableSlots = JSON.parse(availableSlots); // 👈 important fix
+      } catch (err) {
+        return res.status(400).json({
+          message: "Invalid availableSlots format (JSON parse failed)",
+        });
+      }
+    }
+
+    // Validate availableSlots
+    if (Array.isArray(availableSlots)) {
+      const parsed = [];
+      const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+      for (const slot of availableSlots) {
+        const s = {
+          date: slot.date,
+          time: slot.time,
+        };
+
+        if (!s.date || !/^\d{4}-\d{2}-\d{2}$/.test(s.date)) {
+          return res.status(400).json({
+            message: `Invalid date format: ${s.date}`,
+          });
+        }
+
+        if (!timeRegex.test(s.time)) {
+          return res.status(400).json({
+            message: `Invalid time format: ${s.time}`,
+          });
+        }
+
+        parsed.push({
+          date: s.date,
+          time: s.time,
+        });
+      }
+
+      availableSlots = parsed;
+    }
+
+    // ==========================
+    // 📌 4. Build update object
+    // ==========================
+    const updateData = {
+      skills,
+      availableSlots,
+      bio,
+      fee,
+    };
+
+    if (profileImageUrl) updateData.profileImage = profileImageUrl;
+
+    // ==========================
+    // 📌 5. Update mentor in DB
+    // ==========================
+    const mentor = await Mentor.findOneAndUpdate(
+      { user: req.user.id },
+      updateData,
+      { new: true }
+    );
+
+    if (!mentor)
+      return res.status(404).json({ message: "Mentor not found" });
+
+    return res.status(200).json({
+      message: "Mentor data updated successfully",
+      mentor,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Server error during update mentor data",
+      error: error.message,
+    });
+  }
+};
+
 
 export const getMentor = async (req, res) => {
   const errors = validationResult(req);
