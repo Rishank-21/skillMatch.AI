@@ -2,7 +2,7 @@
 
 import express from "express";
 import multer from "multer";
-import { parseResume, saveParsedResume, userResumeController } from "../controllers/ResumeController.js";
+import { parseResume, saveParsedResume, userResumeController } from "../controllers/resumeController.js";
 import { isAuth } from "../middlewares/isAuth.js";
 
 const router = express.Router();
