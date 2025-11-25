@@ -352,10 +352,12 @@ const JoinSession = ({ sessionId, userName, role = "user" }) => {
         toast.error(message);
     };
 
+    const WEBRTC_URL = import.meta.env.VITE_WEBRTC_URL
+
     // Initialize Socket.IO
     useEffect(() => {
         // NOTE: Replace "http://localhost:5000" with your actual VITE_API_URL if needed
-        socketRef.current = io("http://localhost:5000", {
+        socketRef.current = io(WEBRTC_URL, {
             transports: ["websocket", "polling"],
             reconnection: true,
             reconnectionAttempts: 5,
