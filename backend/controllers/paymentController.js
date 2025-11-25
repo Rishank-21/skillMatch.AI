@@ -42,7 +42,7 @@ export const webhookController = async (req, res) => {
         amountPaid: session.amount_total / 100,
       });
 
-       console.log("✅ Session created for", userId);
+       
     } catch (error) {
       console.error("Error creating session:", error);
     }

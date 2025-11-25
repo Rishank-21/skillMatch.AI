@@ -41,7 +41,7 @@ export const createSession = async (req, res) => {
       cancel_url: `${process.env.CLIENT_URL}/payment-cancel`,
     });
 
-    console.log("Stripe Checkout Session Created:", session.metadata);
+    
 
     res.json({ url: session.url });
   } catch (error) {
@@ -65,7 +65,7 @@ export const fetchSessionDetails = async (req, res) => {
 
   try {
     const stripeSession = await stripe.checkout.sessions.retrieve(sessionId);
-    console.log("Stripe Session Retrieved:", stripeSession);
+    
 
     if (stripeSession.payment_status !== "paid") {
       return res.status(400).json({ message: "Payment not completed yet" });

@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { setMentorData } from "../redux/mentorSlice";
 
-//helper
+
 
 const useGetMentorData = () => {
     const dispatch = useDispatch()

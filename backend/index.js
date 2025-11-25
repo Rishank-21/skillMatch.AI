@@ -39,16 +39,16 @@ const io = new Server(server, {
 });
 
 io.on("connection", (socket) => {
-  console.log("✅ User connected:", socket.id);
+ 
 
   // Handle joining a session
   socket.on("join-session", (sessionId) => {
-    console.log(`📡 ${socket.id} joining session: ${sessionId}`);
+    
     socket.join(sessionId);
 
     const room = io.sockets.adapter.rooms.get(sessionId);
     const participants = room ? room.size : 0;
-    console.log(`👥 Room ${sessionId} now has ${participants} participants`);
+    
 
     // Notify existing participants about new peer
     if (participants > 1) {
@@ -74,7 +74,7 @@ io.on("connection", (socket) => {
         if (!session.mentorJoinedAt) {
           session.mentorJoinedAt = now;
           await session.save();
-          console.log(`🟦 Mentor joined ${sessionId} at ${now.toISOString()}`);
+          
         }
       } else {
         // treat as user by default
@@ -82,7 +82,7 @@ io.on("connection", (socket) => {
           session.userJoinedAt = now;
           session.joined = true; // keep backwards compatibility
           await session.save();
-          console.log(`🟩 User joined ${sessionId} at ${now.toISOString()}`);
+          
         }
       }
     } catch (err) {
@@ -92,19 +92,18 @@ io.on("connection", (socket) => {
 
   // Handle WebRTC offer
   socket.on("offer", (data) => {
-    console.log(`📤 Forwarding offer to session: ${data.sessionId}`);
+    
     socket.to(data.sessionId).emit("offer", data);
   });
 
   // Handle WebRTC answer
   socket.on("answer", (data) => {
-    console.log(`📤 Forwarding answer to session: ${data.sessionId}`);
     socket.to(data.sessionId).emit("answer", data);
   });
 
   // Handle ICE candidates
   socket.on("ice-candidate", (data) => {
-    console.log(`🧊 Forwarding ICE candidate to session: ${data.sessionId}`);
+   
     socket.to(data.sessionId).emit("ice-candidate", data);
   });
 

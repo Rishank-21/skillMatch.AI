@@ -1,5 +1,6 @@
 
 
+
 import React, { useEffect, useState } from "react";
 import {
   User,
@@ -310,7 +311,7 @@ const MentorComponent = () => {
                 </div>
                 <button
                   onClick={handleCloseVideoModal}
-                  className="text-white hover:bg-white/20 p-2 rounded-full transition-all duration-200"
+                  className="text-white hover:bg-white/20 p-2 rounded-full transition-all duration-200 cursor-pointer"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -343,20 +344,20 @@ const MentorComponent = () => {
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6 z-20">
                 <div className="flex items-center justify-center gap-6">
                   {/* Mute Button */}
-                  <button className="p-4 bg-slate-700/80 hover:bg-slate-700 rounded-full transition-all duration-200 hover:scale-105">
+                  <button className="p-4 bg-slate-700/80 hover:bg-slate-700 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer">
                     <Mic className="w-6 h-6 text-white" />
                   </button>
 
                   {/* End Call Button */}
                   <button 
                     onClick={handleCloseVideoModal}
-                    className="p-5 bg-red-600 hover:bg-red-700 rounded-full transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-red-500/50"
+                    className="p-5 bg-red-600 hover:bg-red-700 rounded-full transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-red-500/50 cursor-pointer"
                   >
                     <PhoneOff className="w-7 h-7 text-white" />
                   </button>
                   
                   {/* Video Button */}
-                  <button className="p-4 bg-slate-700/80 hover:bg-slate-700 rounded-full transition-all duration-200 hover:scale-105">
+                  <button className="p-4 bg-slate-700/80 hover:bg-slate-700 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer">
                     <Video className="w-6 h-6 text-white" />
                   </button>
                 </div>

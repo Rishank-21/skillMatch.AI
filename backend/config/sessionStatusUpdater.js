@@ -27,7 +27,7 @@ cron.schedule("* * * * *", async () => {
       if ((!session.userJoinedAt || !session.mentorJoinedAt) && now >= fifteenMinutesLater) {
         session.status = "cancelled";
         await session.save();
-        console.log(`❌ Session ${session._id} marked as cancelled`);
+        
       }
 
       // If both joined → check overlapping duration
@@ -38,7 +38,7 @@ cron.schedule("* * * * *", async () => {
         if (durationInSeconds >= 60 && session.status !== "completed") {
           session.status = "completed";
           await session.save();
-          console.log(`✅ Session ${session._id} marked as completed`);
+          
         }
       }
     }

@@ -1,5 +1,7 @@
+
+
 import mongoose from "mongoose";
-//helper
+
 const resumeSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -10,11 +12,28 @@ const resumeSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  extractedSkills: [String],
+  extractedSkills: {
+    type: [String],
+    default: []
+  },
+  cloudinaryUrl: {
+    type: String,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  }
 });
 
-export default mongoose.model("Resume", resumeSchema)
+// Update the updatedAt timestamp before saving
+resumeSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+export default mongoose.model("Resume", resumeSchema);
