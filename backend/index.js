@@ -153,13 +153,10 @@
 // ==========================
 // SkillMatch.AI - FIXED index.js
 // ==========================
-
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 dotenv.config();
-
-const app = express();
 
 import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
@@ -180,14 +177,12 @@ import { Server } from "socket.io";
 
 import Session from "./models/sessionModel.js";
 
-// ❌ REMOVED cookie-session COMPLETELY
-// import cookieSession from "cookie-session";
-
-// =============================
-// Create HTTP + Socket.IO server
-// =============================
+const app = express();
 const server = createServer(app);
 
+// -------------------------------
+// SOCKET.IO SETUP
+// -------------------------------
 const io = new Server(server, {
   cors: {
     origin: "https://skill-match-ai-ashy.vercel.app",
@@ -196,11 +191,9 @@ const io = new Server(server, {
   },
 });
 
-// =============================
-// SOCKET.IO (No change needed)
-// =============================
+// SOCKET EVENTS
 io.on("connection", (socket) => {
-  console.log("⚡ Client connected:", socket.id);
+  console.log("🟢 User connected:", socket.id);
 
   socket.on("join-session", (sessionId) => {
     socket.join(sessionId);
@@ -215,20 +208,21 @@ io.on("connection", (socket) => {
 
   socket.on("joined-session", async ({ sessionId, role }) => {
     try {
-      if (!sessionId) return;
       const session = await Session.findById(sessionId);
       if (!session) return;
 
       const now = new Date();
-      if (role === "mentor" && !session.mentorJoinedAt) {
-        session.mentorJoinedAt = now;
-      } else if (!session.userJoinedAt) {
-        session.userJoinedAt = now;
-        session.joined = true;
+      if (role === "mentor") {
+        if (!session.mentorJoinedAt) session.mentorJoinedAt = now;
+      } else {
+        if (!session.userJoinedAt) {
+          session.userJoinedAt = now;
+          session.joined = true;
+        }
       }
       await session.save();
-    } catch (error) {
-      console.log("❌ joined-session error:", error.message);
+    } catch (err) {
+      console.error("joined-session error:", err);
     }
   });
 
@@ -245,18 +239,18 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ Socket disconnected:", socket.id);
+    console.log("🔴 User disconnected:", socket.id);
   });
 });
 
-// =============================
-// EXPRESS MIDDLEWARE
-// =============================
+// -------------------------------
+// MIDDLEWARE
+// -------------------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// IMPORTANT: Allow cross-site cookies (Vercel -> Render)
+// CORS CONFIG — IMPORTANT
 app.use(
   cors({
     origin: "https://skill-match-ai-ashy.vercel.app",
@@ -264,36 +258,34 @@ app.use(
   })
 );
 
-// Serve uploads folder
+// STATIC UPLOADS
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-// =============================
-// CONNECT DATABASE
-// =============================
+// DB CONNECT
 connectDB();
 
-// =============================
+// -------------------------------
 // ROUTES
-// =============================
+// -------------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/mentor", mentorRoutes);
 app.use("/api/resume", resumeRoutes);
 app.use("/api", getMentorRoutes);
 app.use("/api/session", sessionRoutes);
 
-// Stripe webhook (raw body needed)
+// Stripe webhook must use raw body
 app.post(
   "/webhook/stripe",
   express.raw({ type: "application/json" }),
   webhookRoutes
 );
 
-// =============================
-// START SERVER
-// =============================
+// -------------------------------
+// SERVER START
+// -------------------------------
 const port = process.env.PORT || 5000;
 
 server.listen(port, () => {
-  console.log(`🚀 Server running on port: ${port}`);
-  console.log(`🔌 Socket.IO ready on ws://localhost:${port}`);
+  console.log(`🚀 Server running on port ${port}`);
+  console.log(`🔌 Socket.IO ready`);
 });
