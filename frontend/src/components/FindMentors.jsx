@@ -528,15 +528,15 @@ const PaymentModal = ({ isOpen, onClose, mentor }) => {
     const price = parseFloat(mentor.price.replace(/[^0-9.]/g, "")); 
     
     // Use toast.promise for API call management
-     const { data } = await axios.post(
-        `${import.meta.env.VITE_API_URL}/session/create-session`,
-        {
-          userId,
-           mentorId,
-           sessionTime: sessionTimeArray,
-           amountInCents: price * 100,
-         }
-       );
+    const paymentPromise = axios.post(
+      `${import.meta.env.VITE_API_URL}/session/create-session`,
+      {
+        userId,
+        mentorId,
+        sessionTime: sessionTimeArray,
+        amountInCents: price * 100,
+      }
+    );
 
     toast.promise(paymentPromise, {
       loading: 'Initiating payment...',
