@@ -138,10 +138,8 @@ const App = () => {
           path="/mentors/:userId" 
           element={userData ? <FindMentors /> : <Navigate to="/login" />} 
         />
-        <Route 
-          path="/payment-success" 
-          element={userData ? <PaymentSuccess /> : <Navigate to="/login" />} 
-        />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+
         <Route 
           path="/sessions/:userId" 
           element={userData ? <Sessions /> : <Navigate to="/login" />} 
