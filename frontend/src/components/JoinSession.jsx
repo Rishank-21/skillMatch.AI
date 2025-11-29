@@ -680,7 +680,7 @@
 
 
 import React, { useEffect, useRef, useState } from "react";
-import { socket } from "./socket";  // ✅ Import existing socket
+import { socket } from "../socket.js";  // ✅ Import existing socket
 import toast from 'react-hot-toast';
 
 const JoinSession = ({ sessionId, userName, role = "user" }) => {
