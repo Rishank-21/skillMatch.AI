@@ -679,54 +679,25 @@
 
 
 
-
 import React, { useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
+import { socket } from "./socket";  // ✅ Import existing socket
 import toast from 'react-hot-toast';
-
-// ========== FIX SOCKET.IO LOGGER BUG ==========
-if (typeof window !== 'undefined') {
-    const originalIo = io;
-    window.io = function(...args) {
-        const socket = originalIo(...args);
-        
-        // Patch the internal logger
-        if (socket.io && socket.io.engine) {
-            const engine = socket.io.engine;
-            if (engine && !engine.logger) {
-                engine.logger = {
-                    info: () => {},
-                    error: () => {},
-                    warn: () => {},
-                    debug: () => {}
-                };
-            }
-        }
-        
-        return socket;
-    };
-}
-
-
 
 const JoinSession = ({ sessionId, userName, role = "user" }) => {
     const localVideoRef = useRef();
     const remoteVideoRef = useRef();
     const peerConnection = useRef(null);
     const localStream = useRef(null);
-    const socketRef = useRef(null);
     const [isAudioMuted, setIsAudioMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
     const [isConnecting, setIsConnecting] = useState(true);
     const [isRemoteConnected, setIsRemoteConnected] = useState(false);
-    const pendingCandidates = useRef([]); // Store ICE candidates
+    const pendingCandidates = useRef([]);
 
     const handleError = (message, err = null) => {
         console.error("❌ Session Error:", message, err);
         toast.error(message);
     };
-
-    const WEBRTC_URL = import.meta.env.VITE_WEBRTC_URL;
 
     // ========== CREATE PEER CONNECTION ==========
     const createPeer = () => {
@@ -743,18 +714,16 @@ const JoinSession = ({ sessionId, userName, role = "user" }) => {
             ],
         });
 
-        // ICE Candidate
         peerConnection.current.onicecandidate = (event) => {
-            if (event.candidate && socketRef.current) {
+            if (event.candidate && socket.connected) {
                 console.log("🧊 Sending ICE candidate");
-                socketRef.current.emit("ice-candidate", {
+                socket.emit("ice-candidate", {
                     sessionId,
                     candidate: event.candidate,
                 });
             }
         };
 
-        // Remote Track Received
         peerConnection.current.ontrack = (event) => {
             console.log("✅ Remote track received!");
             setIsRemoteConnected(true);
@@ -764,7 +733,6 @@ const JoinSession = ({ sessionId, userName, role = "user" }) => {
             }
         };
 
-        // Connection State Changes
         peerConnection.current.oniceconnectionstatechange = () => {
             const state = peerConnection.current.iceConnectionState;
             console.log(`🧊 ICE State: ${state}`);
@@ -780,17 +748,13 @@ const JoinSession = ({ sessionId, userName, role = "user" }) => {
             console.log(`📡 Connection State: ${peerConnection.current.connectionState}`);
         };
 
-        // Add Local Tracks
         if (localStream.current) {
             console.log("🎥 Adding local tracks to peer");
             localStream.current.getTracks().forEach((track) => {
                 peerConnection.current.addTrack(track, localStream.current);
             });
-        } else {
-            console.warn("⚠️ No local stream available!");
         }
 
-        // Add pending ICE candidates
         pendingCandidates.current.forEach(async (candidate) => {
             try {
                 await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -803,51 +767,136 @@ const JoinSession = ({ sessionId, userName, role = "user" }) => {
     };
 
     // ========== SOCKET.IO SETUP ==========
-// ========== SOCKET.IO SETUP ==========
-useEffect(() => {
-    socketRef.current = io(WEBRTC_URL, {
-        transports: ["websocket", "polling"],
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        withCredentials: true,
-        autoConnect: true,
-        upgrade: true,
-        // ADD THIS:
-        extraHeaders: {
-            "X-Socket-Logger": "disabled"
+    useEffect(() => {
+        console.log("🔌 Setting up socket listeners for session:", sessionId);
+
+        // Connect socket if not already connected
+        if (!socket.connected) {
+            console.log("📡 Connecting to socket server...");
+            socket.connect();
         }
-    });
 
-    const socket = socketRef.current;
+        const handleConnect = () => {
+            console.log("✅ Connected to signaling server, Socket ID:", socket.id);
+            toast.success("Connected to signaling server.");
+            setIsConnecting(false);
+        };
 
-    // Completely disable internal logging
-    try {
-        if (socket.io?.engine) {
-            socket.io.engine.binaryType = 'arraybuffer';
+        const handleDisconnect = (reason) => {
+            console.log("🔴 Disconnected:", reason);
+            handleError("Connection to server lost. Trying to reconnect...");
+        };
+
+        const handleConnectError = (err) => {
+            console.error("❌ Socket connection error:", err);
+            handleError("Failed to connect to signaling server.");
+        };
+
+        // ========== PEER JOINED ==========
+        const handlePeerJoined = async (peerId) => {
+            console.log("👤 Peer joined:", peerId);
+            toast.info("Peer joined the session. Setting up connection...");
             
-            // Override logger methods
-            const noop = () => {};
-            if (socket.io.engine.transport) {
-                ['info', 'error', 'warn', 'debug'].forEach(method => {
-                    if (socket.io.engine.transport[method]) {
-                        socket.io.engine.transport[method] = noop;
-                    }
-                });
+            try {
+                createPeer();
+                await new Promise((resolve) => setTimeout(resolve, 500));
+
+                const offer = await peerConnection.current.createOffer();
+                await peerConnection.current.setLocalDescription(offer);
+                
+                console.log("📤 Sending offer");
+                socket.emit("offer", { sessionId, offer });
+            } catch (err) {
+                console.error("❌ Error creating offer:", err);
+                handleError("Failed to connect with peer (offer error).");
             }
-        }
-    } catch (e) {
-        // Silently ignore
-    }
+        };
 
-    socket.on("connect", () => {
-        console.log("✅ Connected to signaling server");
-        toast.success("Connected to signaling server.");
-        setIsConnecting(false);
-    });
+        // ========== OFFER RECEIVED ==========
+        const handleOffer = async ({ offer }) => {
+            console.log("📥 Received offer");
+            toast.info("Receiving session offer...");
+            
+            try {
+                createPeer();
 
-    // ... rest of socket events
-}, [sessionId]);
+                await peerConnection.current.setRemoteDescription(
+                    new RTCSessionDescription(offer)
+                );
+                
+                const answer = await peerConnection.current.createAnswer();
+                await peerConnection.current.setLocalDescription(answer);
+                
+                console.log("📤 Sending answer");
+                socket.emit("answer", { sessionId, answer });
+            } catch (err) {
+                console.error("❌ Error handling offer:", err);
+                handleError("Failed to establish connection (answer error).");
+            }
+        };
+
+        // ========== ANSWER RECEIVED ==========
+        const handleAnswer = async ({ answer }) => {
+            console.log("📥 Received answer");
+            toast.success("Connection handshake complete!");
+            
+            try {
+                if (
+                    peerConnection.current &&
+                    peerConnection.current.signalingState !== "stable"
+                ) {
+                    await peerConnection.current.setRemoteDescription(
+                        new RTCSessionDescription(answer)
+                    );
+                }
+            } catch (err) {
+                console.error("❌ Error handling answer:", err);
+            }
+        };
+
+        // ========== ICE CANDIDATE ==========
+        const handleIceCandidate = async ({ candidate }) => {
+            console.log("🧊 Received ICE candidate");
+            
+            try {
+                if (peerConnection.current?.remoteDescription) {
+                    await peerConnection.current.addIceCandidate(
+                        new RTCIceCandidate(candidate)
+                    );
+                } else {
+                    console.log("⏳ Storing ICE candidate for later");
+                    pendingCandidates.current.push(candidate);
+                }
+            } catch (err) {
+                console.error("❌ ICE error:", err);
+            }
+        };
+
+        // Register event listeners
+        socket.on("connect", handleConnect);
+        socket.on("disconnect", handleDisconnect);
+        socket.on("connect_error", handleConnectError);
+        socket.on("peer-joined", handlePeerJoined);
+        socket.on("offer", handleOffer);
+        socket.on("answer", handleAnswer);
+        socket.on("ice-candidate", handleIceCandidate);
+
+        // Cleanup function
+        return () => {
+            console.log("🧹 Cleaning up socket listeners");
+            socket.off("connect", handleConnect);
+            socket.off("disconnect", handleDisconnect);
+            socket.off("connect_error", handleConnectError);
+            socket.off("peer-joined", handlePeerJoined);
+            socket.off("offer", handleOffer);
+            socket.off("answer", handleAnswer);
+            socket.off("ice-candidate", handleIceCandidate);
+            
+            // Don't disconnect socket here if other components might use it
+            // socket.disconnect();
+        };
+    }, [sessionId]);
+
     // ========== CAMERA SETUP ==========
     useEffect(() => {
         let stream;
@@ -865,17 +914,20 @@ useEffect(() => {
 
                 console.log("📹 Camera ready");
 
-                // Join session after camera is ready
-                setTimeout(() => {
-                    if (socketRef.current?.connected) {
-                        console.log("🚪 Joining session room");
-                        socketRef.current.emit("join-session", sessionId);
-                        socketRef.current.emit("joined-session", { sessionId, role });
+                // Wait for socket to connect before joining
+                const joinSession = () => {
+                    if (socket.connected) {
+                        console.log("🚪 Joining session room:", sessionId);
+                        socket.emit("join-session", sessionId);
+                        socket.emit("joined-session", { sessionId, role });
                         toast.info("Camera and Mic connected. Joining session room...");
                     } else {
-                        handleError("Socket not connected. Cannot join session room.");
+                        console.log("⏳ Waiting for socket to connect...");
+                        setTimeout(joinSession, 500);
                     }
-                }, 1000);
+                };
+
+                setTimeout(joinSession, 1000);
             } catch (err) {
                 handleError(
                     "Camera access denied. Please allow camera and microphone access to join the call.",
@@ -886,11 +938,13 @@ useEffect(() => {
         startCamera();
 
         return () => {
+            console.log("🧹 Cleaning up camera stream");
             if (stream) {
                 stream.getTracks().forEach((track) => track.stop());
             }
             if (peerConnection.current) {
                 peerConnection.current.close();
+                peerConnection.current = null;
             }
         };
     }, [sessionId, role]);
@@ -919,9 +973,7 @@ useEffect(() => {
 
     return (
         <div className="flex flex-col gap-6 p-4">
-            {/* Videos */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Local Video */}
                 <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
                     <video
                         ref={localVideoRef}
@@ -944,7 +996,6 @@ useEffect(() => {
                     )}
                 </div>
 
-                {/* Remote Video */}
                 <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
                     <video
                         ref={remoteVideoRef}
@@ -975,7 +1026,6 @@ useEffect(() => {
                 </div>
             </div>
 
-            {/* Controls */}
             <div className="flex justify-center gap-4">
                 <button
                     onClick={toggleAudio}
