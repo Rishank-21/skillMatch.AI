@@ -805,30 +805,40 @@ const JoinSession = ({ sessionId, userName, role = "user" }) => {
     // ========== SOCKET.IO SETUP ==========
 // ========== SOCKET.IO SETUP ==========
 useEffect(() => {
-    // Disable Socket.IO debug logging to avoid Z.info errors
     socketRef.current = io(WEBRTC_URL, {
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
         withCredentials: true,
-        // ADD THESE OPTIONS:
         autoConnect: true,
-        forceNew: false,
-        // Disable internal logging
         upgrade: true,
-        rememberUpgrade: true,
+        // ADD THIS:
+        extraHeaders: {
+            "X-Socket-Logger": "disabled"
+        }
     });
 
     const socket = socketRef.current;
 
-    // Suppress socket.io-client logger errors
-    socket.io.on("error", (err) => {
-        if (err.message && err.message.includes("info is not a function")) {
-            return; // Silently ignore logger errors
+    // Completely disable internal logging
+    try {
+        if (socket.io?.engine) {
+            socket.io.engine.binaryType = 'arraybuffer';
+            
+            // Override logger methods
+            const noop = () => {};
+            if (socket.io.engine.transport) {
+                ['info', 'error', 'warn', 'debug'].forEach(method => {
+                    if (socket.io.engine.transport[method]) {
+                        socket.io.engine.transport[method] = noop;
+                    }
+                });
+            }
         }
-        console.error("Socket.IO error:", err);
-    });
+    } catch (e) {
+        // Silently ignore
+    }
 
     socket.on("connect", () => {
         console.log("✅ Connected to signaling server");
@@ -836,24 +846,8 @@ useEffect(() => {
         setIsConnecting(false);
     });
 
-    socket.on("disconnect", () => {
-        handleError("Connection to server lost. Trying to reconnect...");
-    });
-
-    socket.on("connect_error", (err) => {
-        console.error("❌ Socket connection error:", err);
-        handleError("Failed to connect to signaling server.");
-    });
-
-    // ... rest of your socket event handlers ...
-
-    return () => {
-        if (socket) {
-            socket.disconnect();
-        }
-    };
+    // ... rest of socket events
 }, [sessionId]);
-
     // ========== CAMERA SETUP ==========
     useEffect(() => {
         let stream;
