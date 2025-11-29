@@ -684,6 +684,31 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import toast from 'react-hot-toast';
 
+// ========== FIX SOCKET.IO LOGGER BUG ==========
+if (typeof window !== 'undefined') {
+    const originalIo = io;
+    window.io = function(...args) {
+        const socket = originalIo(...args);
+        
+        // Patch the internal logger
+        if (socket.io && socket.io.engine) {
+            const engine = socket.io.engine;
+            if (engine && !engine.logger) {
+                engine.logger = {
+                    info: () => {},
+                    error: () => {},
+                    warn: () => {},
+                    debug: () => {}
+                };
+            }
+        }
+        
+        return socket;
+    };
+}
+
+
+
 const JoinSession = ({ sessionId, userName, role = "user" }) => {
     const localVideoRef = useRef();
     const remoteVideoRef = useRef();
