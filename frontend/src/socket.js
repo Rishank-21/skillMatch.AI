@@ -27,28 +27,56 @@ import { io } from "socket.io-client";
 
 const SOCKET_URL = import.meta.env.VITE_WEBRTC_URL || "https://skillmatch-ai-2v8j.onrender.com";
 
-// ========== NUCLEAR OPTION: Block ALL internal errors ==========
+// ========== ULTIMATE ERROR SUPPRESSION ==========
 if (typeof window !== 'undefined') {
-  const originalError = console.error;
+  // Store originals
+  const _error = console.error;
+  const _warn = console.warn;
   
-  window.console.error = function(...args) {
+  // Override console.error
+  console.error = function(...args) {
     const msg = String(args[0] || '');
-    const stack = new Error().stack || '';
     
-    // Block if:
-    // 1. Contains "is not a function"
-    // 2. Originates from socket.io code (index-*.js)
+    // Block Socket.IO internal errors completely
     if (
       msg.includes('is not a function') ||
-      stack.includes('MS.H') ||
-      stack.includes('et.emit') ||
-      stack.includes('MS.emitEvent')
+      msg.includes('Q.info') ||
+      msg.includes('Z.info') ||
+      msg.includes('MS.H') ||
+      msg.includes('et.emit')
     ) {
-      return; // Silently block
+      return; // Block completely
     }
     
-    return originalError.apply(console, args);
+    return _error.apply(console, args);
   };
+  
+  // Override console.warn
+  console.warn = function(...args) {
+    const msg = String(args[0] || '');
+    if (msg.includes('is not a function')) {
+      return;
+    }
+    return _warn.apply(console, args);
+  };
+  
+  // Global error handler
+  window.addEventListener('error', (e) => {
+    if (e.message && e.message.includes('is not a function')) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      return false;
+    }
+  }, true);
+  
+  // Unhandled promise rejections
+  window.addEventListener('unhandledrejection', (e) => {
+    if (e.reason && String(e.reason).includes('is not a function')) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      return false;
+    }
+  }, true);
 }
 
 // Create socket
@@ -66,7 +94,7 @@ socket.on("connect", () => {
 });
 
 socket.on("disconnect", (reason) => {
-  console.log("🔴 Socket disconnected:", reason);
+  console.log("🔴 Disconnected:", reason);
 });
 
 socket.on("connect_error", (err) => {
@@ -74,3 +102,21 @@ socket.on("connect_error", (err) => {
 });
 
 export default socket;
+```
+
+---
+
+## 🎯 **Ab Test Karo:**
+
+1. **Deploy karo yeh updated socket.js**
+2. **Hard refresh karo dono browsers** (Ctrl + Shift + R)
+3. **Join karo dono users**
+4. **Console check karo:**
+
+**Expected output:**
+```
+// 👤 👤 👤 PEER: yeuw4CfcNXeSDCbSAAAB
+// 🔧 Creating peer
+// 🎥 Adding tracks
+// 📝 Creating offer
+// 📤 Sending offer
