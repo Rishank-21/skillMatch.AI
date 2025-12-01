@@ -79,6 +79,23 @@
 import { io } from "socket.io-client";
 
 const SOCKET_URL = import.meta.env.VITE_WEBRTC_URL || "https://skillmatch-ai-2v8j.onrender.com";
+// socket.js — add this at the very top, before anything else runs
+if (typeof window !== "undefined") {
+  try {
+    // create safe global fallback only if not present
+    if (!window.J || typeof window.J.info !== "function") {
+      window.J = window.J || {};
+      window.J.info = window.J.info || function(...args) {
+        // sahi debugging ke liye console.log; production me isko no-op bana sakte ho
+        console.log("[J.info-fallback]", ...args);
+      };
+    }
+  } catch (e) {
+    // ignore if window is locked or restricted
+    console.warn("Could not set J fallback", e);
+  }
+}
+
 
 export const socket = io(SOCKET_URL, {
   transports: ["websocket", "polling"],
@@ -88,6 +105,27 @@ export const socket = io(SOCKET_URL, {
   reconnectionDelay: 1000,
   withCredentials: true,
 });
+
+socket.on("peer-joined", (peerId) => {
+  console.log("SIGNAL: peer-joined ->", peerId);
+  onPeerJoined(peerId); // keep existing handler logic
+});
+
+socket.on("offer", (data) => {
+  console.log("SIGNAL: offer received:", data && (data.offer?.type || data.offer?.sdp?.substring?.(0,50)));
+  onOffer(data);
+});
+
+socket.on("answer", (data) => {
+  console.log("SIGNAL: answer received:", data && (data.answer?.type));
+  onAnswer(data);
+});
+
+socket.on("ice-candidate", (data) => {
+  console.log("SIGNAL: ice-candidate received:", data && data.candidate && data.candidate.candidate?.substring?.(0,80));
+  onIce(data);
+});
+
 
 socket.on("connect", () => {
   console.log("✅ Socket connected:", socket.id);

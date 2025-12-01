@@ -731,33 +731,48 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
     // -------------------
     // IMPORTANT: set handlers BEFORE adding local tracks
     // -------------------
-    pc.ontrack = (event) => {
-      if (showDebug) console.log("🎉 ontrack event:", event);
+   pc.ontrack = (event) => {
+  if (showDebug) console.log("🎉 ontrack event:", event);
 
-      // Prefer event.streams[0] if available
-      if (event.streams && event.streams[0]) {
-        const stream = event.streams[0];
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = stream;
-          // try play (may fail silently due to autoplay policies)
-          remoteVideoRef.current.play().catch((e) => {
-            if (showDebug) console.log("Remote play failed (autoplay?)", e);
-          });
-        }
-      } else {
-        // Fallback: create stream from incoming tracks
-        const inboundStream = new MediaStream();
-        inboundStream.addTrack(event.track);
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = inboundStream;
-          remoteVideoRef.current.play().catch((e) => {
-            if (showDebug) console.log("Remote play failed (autoplay?)", e);
-          });
-        }
-      }
-      setIsRemoteConnected(true);
-      toast.success("Connected! 🎥");
-    };
+  // Prefer event.streams[0] if available
+  if (event.streams && event.streams[0]) {
+    const stream = event.streams[0];
+    if (remoteVideoRef.current) {
+      // Important: temporarily mute remote video to allow autoplay
+      remoteVideoRef.current.muted = true;
+      remoteVideoRef.current.srcObject = stream;
+      remoteVideoRef.current.play()
+        .then(() => {
+          if (showDebug) console.log("✅ Remote playing (muted)");
+          // optionally unmute after a user gesture or small delay
+          setTimeout(() => {
+            try {
+              // do not force-unmute; only unmute if you want to risk autoplay block
+              // remoteVideoRef.current.muted = false;
+            } catch (e) {}
+          }, 1000);
+        })
+        .catch((e) => {
+          if (showDebug) console.log("Remote play failed (autoplay?)", e);
+        });
+    }
+  } else {
+    // Fallback: create stream from incoming tracks
+    const inboundStream = new MediaStream();
+    inboundStream.addTrack(event.track);
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.muted = true;
+      remoteVideoRef.current.srcObject = inboundStream;
+      remoteVideoRef.current.play()
+        .catch((e) => {
+          if (showDebug) console.log("Remote play failed (autoplay?)", e);
+        });
+    }
+  }
+  setIsRemoteConnected(true);
+  toast.success("Connected! 🎥");
+};
+
 
     pc.onicecandidate = (e) => {
       if (e.candidate) {
