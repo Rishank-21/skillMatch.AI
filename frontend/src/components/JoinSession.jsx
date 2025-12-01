@@ -673,7 +673,416 @@
 // };
 
 // export default JoinSession;
-// JoinSession.jsx
+
+
+
+
+
+
+
+
+
+// // JoinSession.jsx
+// import React, { useEffect, useRef, useState } from "react";
+// import { socket } from "../socket";
+// import toast from "react-hot-toast";
+
+// const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) => {
+//   const localVideoRef = useRef();
+//   const remoteVideoRef = useRef();
+//   const peerConnection = useRef(null);
+//   const localStream = useRef(null);
+//   const [isAudioMuted, setIsAudioMuted] = useState(false);
+//   const [isVideoOff, setIsVideoOff] = useState(false);
+//   const [isConnecting, setIsConnecting] = useState(true);
+//   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
+//   const pendingCandidates = useRef([]);
+//   const hasJoinedRoom = useRef(false);
+
+//   const handleError = (message, err = null) => {
+//     console.error("❌", message, err);
+//     toast.error(message);
+//   };
+
+//   const safeEmit = (eventName, data) => {
+//     try {
+//       socket.emit(eventName, data);
+//       return true;
+//     } catch (err) {
+//       console.error(`Failed to emit ${eventName}:`, err?.message || err);
+//       setTimeout(() => {
+//         try {
+//           socket.emit(eventName, data);
+//         } catch (retryErr) {
+//           console.error(`Retry failed for ${eventName}`, retryErr);
+//         }
+//       }, 100);
+//       return false;
+//     }
+//   };
+
+//   const createPeer = () => {
+//     if (peerConnection.current) {
+//       if (showDebug) console.log("⚠️ Peer exists");
+//       return peerConnection.current;
+//     }
+
+//     if (showDebug) console.log("🔧 Creating peer");
+
+//     const pc = new RTCPeerConnection({
+//       iceServers: [
+//         { urls: "stun:stun.l.google.com:19302" },
+//         { urls: "stun:stun1.l.google.com:19302" },
+//       ],
+//     });
+
+//     // Handlers first
+//     pc.ontrack = (event) => {
+//       if (showDebug) console.log("🎉 ontrack event:", event);
+
+//       // Prefer event.streams[0] if available
+//       if (event.streams && event.streams[0]) {
+//         const stream = event.streams[0];
+//         if (remoteVideoRef.current) {
+//           // Temporarily mute remote video to allow autoplay
+//           remoteVideoRef.current.muted = true;
+//           remoteVideoRef.current.srcObject = stream;
+//           remoteVideoRef.current.play()
+//             .then(() => {
+//               if (showDebug) console.log("✅ Remote playing (muted)");
+//               setTimeout(() => {
+//                 // do not auto unmute — leave to user gesture
+//               }, 500);
+//             })
+//             .catch((e) => {
+//               if (showDebug) console.log("Remote play failed (autoplay?)", e);
+//             });
+//         }
+//       } else {
+//         // Fallback: create stream from incoming tracks
+//         const inboundStream = new MediaStream();
+//         inboundStream.addTrack(event.track);
+//         if (remoteVideoRef.current) {
+//           remoteVideoRef.current.muted = true;
+//           remoteVideoRef.current.srcObject = inboundStream;
+//           remoteVideoRef.current.play().catch((e) => {
+//             if (showDebug) console.log("Remote play failed (autoplay?)", e);
+//           });
+//         }
+//       }
+//       setIsRemoteConnected(true);
+//       toast.success("Connected! 🎥");
+//     };
+
+//     pc.onicecandidate = (e) => {
+//       if (e.candidate) {
+//         try {
+//           const candidateObj = e.candidate.toJSON();
+//           if (showDebug) console.log("🧊 Sending local ICE candidate", candidateObj);
+//           safeEmit("ice-candidate", { sessionId, candidate: candidateObj });
+//         } catch (err) {
+//           if (showDebug) console.error("Error serializing candidate", err);
+//         }
+//       }
+//     };
+
+//     pc.oniceconnectionstatechange = () => {
+//       if (showDebug) console.log("🧊 ICE state:", pc.iceConnectionState);
+//     };
+
+//     // Add local tracks AFTER handlers set
+//     if (localStream.current) {
+//       if (showDebug) console.log("🎥 Adding local tracks");
+//       localStream.current.getTracks().forEach((track) => {
+//         try {
+//           pc.addTrack(track, localStream.current);
+//         } catch (e) {
+//           if (showDebug) console.error("addTrack error", e);
+//         }
+//       });
+//     }
+
+//     // Drain pending remote ICE
+//     if (pendingCandidates.current.length > 0) {
+//       pendingCandidates.current.forEach(async (c) => {
+//         try {
+//           await pc.addIceCandidate(new RTCIceCandidate(c));
+//           if (showDebug) console.log("Added pending candidate", c);
+//         } catch (e) {
+//           if (showDebug) console.error("Failed adding pending candidate", e);
+//         }
+//       });
+//       pendingCandidates.current = [];
+//     }
+
+//     peerConnection.current = pc;
+//     return pc;
+//   };
+
+//   // Create offer flow (used when peer-joined event arrives)
+//   const createAndSendOffer = async () => {
+//     try {
+//       const pc = createPeer();
+//       if (showDebug) console.log("📝 Creating offer");
+//       const offer = await pc.createOffer();
+//       await pc.setLocalDescription(offer);
+//       safeEmit("offer", { sessionId, offer: pc.localDescription.toJSON() });
+//       if (showDebug) console.log("📤 Offer sent");
+//     } catch (err) {
+//       console.error("❌ Offer creation error:", err);
+//       handleError("Offer creation failed");
+//     }
+//   };
+
+//   // ---------------- SOCKET SETUP ----------------
+//   useEffect(() => {
+//     if (showDebug) console.log("🔌 Setup:", sessionId, role);
+
+//     if (!socket.connected) {
+//       socket.connect();
+//     }
+
+//     // Peer joined handler — start negotiation as initiator
+//     const onPeerJoined = async (peerId) => {
+//       try {
+//         if (showDebug) console.log("SIGNAL: peer-joined ->", peerId);
+//         // Ensure local stream ready
+//         let tries = 0;
+//         while (!localStream.current && tries < 6) {
+//           await new Promise((r) => setTimeout(r, 300));
+//           tries++;
+//         }
+//         // start offer
+//         await createAndSendOffer();
+//       } catch (err) {
+//         console.error("onPeerJoined error:", err);
+//       }
+//     };
+
+//     const onOffer = async ({ offer, from }) => {
+//       try {
+//         if (showDebug) console.log("SIGNAL: offer received from", from);
+//         // ensure local stream ready
+//         let tries = 0;
+//         while (!localStream.current && tries < 6) {
+//           await new Promise((r) => setTimeout(r, 300));
+//           tries++;
+//         }
+
+//         const pc = createPeer();
+//         await pc.setRemoteDescription(new RTCSessionDescription(offer));
+//         const answer = await pc.createAnswer();
+//         await pc.setLocalDescription(answer);
+//         safeEmit("answer", { sessionId, answer: pc.localDescription.toJSON() });
+//         if (showDebug) console.log("📤 Answer sent");
+//       } catch (err) {
+//         console.error("❌ Handling offer failed:", err);
+//         handleError("Failed to handle offer");
+//       }
+//     };
+
+//     const onAnswer = async ({ answer, from }) => {
+//       try {
+//         if (showDebug) console.log("SIGNAL: answer received from", from);
+//         const pc = peerConnection.current;
+//         if (!pc) {
+//           if (showDebug) console.warn("No peerConnection when answer arrived");
+//           return;
+//         }
+//         await pc.setRemoteDescription(new RTCSessionDescription(answer));
+//         if (showDebug) console.log("✅ Remote description (answer) set");
+//       } catch (err) {
+//         console.error("❌ Answer handling error:", err);
+//       }
+//     };
+
+//     const onIce = async ({ candidate, from }) => {
+//       try {
+//         if (!candidate) return;
+//         if (peerConnection.current && peerConnection.current.remoteDescription) {
+//           await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+//           if (showDebug) console.log("✅ Added remote ICE candidate", candidate);
+//         } else {
+//           pendingCandidates.current.push(candidate);
+//           if (showDebug) console.log("⏳ Pushed pending candidate", candidate);
+//         }
+//       } catch (e) {
+//         if (showDebug) console.error("addIceCandidate error:", e);
+//       }
+//     };
+
+//     const onConnect = () => {
+//       if (showDebug) console.log("✅ Socket connected:", socket.id);
+//       setIsConnecting(false);
+//     };
+
+//     socket.on("connect", onConnect);
+//     socket.on("peer-joined", onPeerJoined);
+//     socket.on("offer", onOffer);
+//     socket.on("answer", onAnswer);
+//     socket.on("ice-candidate", onIce);
+
+//     return () => {
+//       socket.off("connect", onConnect);
+//       socket.off("peer-joined", onPeerJoined);
+//       socket.off("offer", onOffer);
+//       socket.off("answer", onAnswer);
+//       socket.off("ice-candidate", onIce);
+//     };
+//   }, [sessionId, role, showDebug]);
+
+//   // ---------------- CAMERA ----------------
+//   useEffect(() => {
+//     let stream;
+
+//     const startCamera = async () => {
+//       try {
+//         if (showDebug) console.log("📹 Camera...");
+//         stream = await navigator.mediaDevices.getUserMedia({
+//           video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+//           audio: true,
+//         });
+
+//         localStream.current = stream;
+//         if (showDebug) console.log("✅ Camera ready");
+
+//         if (localVideoRef.current) {
+//           localVideoRef.current.srcObject = stream;
+//           localVideoRef.current.muted = true;
+//           await localVideoRef.current.play().catch(() => {});
+//         }
+
+//         const joinRoom = () => {
+//           if (hasJoinedRoom.current) return;
+//           if (socket.connected) {
+//             if (showDebug) console.log("🚪 Joining:", sessionId, "as", role);
+//             safeEmit("join-session", sessionId);
+//             safeEmit("joined-session", { sessionId, role });
+//             hasJoinedRoom.current = true;
+//           } else {
+//             setTimeout(joinRoom, 500);
+//           }
+//         };
+
+//         setTimeout(joinRoom, 500);
+//       } catch (err) {
+//         console.error("❌ Camera:", err);
+//         handleError("Camera denied or not available");
+//       }
+//     };
+
+//     startCamera();
+
+//     return () => {
+//       if (showDebug) console.log("🧹 Cleanup");
+//       if (stream) {
+//         stream.getTracks().forEach((t) => t.stop());
+//       }
+//       if (peerConnection.current) {
+//         peerConnection.current.close();
+//         peerConnection.current = null;
+//       }
+//       hasJoinedRoom.current = false;
+//       localStream.current = null;
+//     };
+//   }, [sessionId, role, showDebug]);
+
+//   const toggleAudio = () => {
+//     if (localStream.current) {
+//       const track = localStream.current.getAudioTracks()[0];
+//       if (track) {
+//         track.enabled = !track.enabled;
+//         setIsAudioMuted(!track.enabled);
+//       }
+//     }
+//   };
+
+//   const toggleVideo = () => {
+//     if (localStream.current) {
+//       const track = localStream.current.getVideoTracks()[0];
+//       if (track) {
+//         track.enabled = !track.enabled;
+//         setIsVideoOff(!track.enabled);
+//       }
+//     }
+//   };
+
+//   return (
+//     <div className="flex flex-col gap-6 p-4">
+//       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+//         <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
+//           <video
+//             ref={localVideoRef}
+//             autoPlay
+//             playsInline
+//             muted
+//             className="w-full h-full object-cover bg-gray-900"
+//           />
+//           <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-2 rounded-lg text-sm">
+//             <div className="flex items-center gap-2">
+//               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+//               You ({userName})
+//             </div>
+//           </div>
+//         </div>
+
+//         <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
+//           <video
+//             ref={remoteVideoRef}
+//             autoPlay
+//             playsInline
+//             className="w-full h-full object-cover bg-gray-900"
+//           />
+//           <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-2 rounded-lg text-sm">
+//             <div className="flex items-center gap-2">
+//               <div
+//                 className={`w-2 h-2 rounded-full ${
+//                   isRemoteConnected ? "bg-green-400 animate-pulse" : "bg-gray-400"
+//                 }`}
+//               ></div>
+//               Remote
+//             </div>
+//           </div>
+//           {!isRemoteConnected && (
+//             <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+//               <div className="text-center text-gray-400">
+//                 <div className="text-6xl mb-4">👤</div>
+//                 <div>Waiting...</div>
+//               </div>
+//             </div>
+//           )}
+//         </div>
+//       </div>
+
+//       <div className="flex justify-center gap-4">
+//         <button
+//           onClick={toggleAudio}
+//           className={`px-6 py-3 rounded-xl ${isAudioMuted ? "bg-red-600" : "bg-gray-700"} text-white`}
+//         >
+//           {isAudioMuted ? "🔇" : "🔊"}
+//         </button>
+//         <button
+//           onClick={toggleVideo}
+//           className={`px-6 py-3 rounded-xl ${isVideoOff ? "bg-red-600" : "bg-gray-700"} text-white`}
+//         >
+//           {isVideoOff ? "📹" : "🎥"}
+//         </button>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default JoinSession;
+
+
+
+
+
+
+
+
+
+// JoinSession.jsx (audio + video fixes)
 import React, { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import toast from "react-hot-toast";
@@ -681,12 +1090,15 @@ import toast from "react-hot-toast";
 const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) => {
   const localVideoRef = useRef();
   const remoteVideoRef = useRef();
+  const remoteAudioRef = useRef(); // NEW: audio element for remote audio
   const peerConnection = useRef(null);
   const localStream = useRef(null);
-  const [isAudioMuted, setIsAudioMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(false); // local mic mute
+  const [isVideoOff, setIsVideoOff] = useState(false); // local cam toggle
   const [isConnecting, setIsConnecting] = useState(true);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false); // remote audio playing
+  const [audioBlocked, setAudioBlocked] = useState(false); // autoplay blocked
   const pendingCandidates = useRef([]);
   const hasJoinedRoom = useRef(false);
 
@@ -719,7 +1131,6 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
     }
 
     if (showDebug) console.log("🔧 Creating peer");
-
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
@@ -727,40 +1138,43 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       ],
     });
 
-    // Handlers first
+    // Handle incoming tracks
     pc.ontrack = (event) => {
       if (showDebug) console.log("🎉 ontrack event:", event);
 
-      // Prefer event.streams[0] if available
-      if (event.streams && event.streams[0]) {
-        const stream = event.streams[0];
-        if (remoteVideoRef.current) {
-          // Temporarily mute remote video to allow autoplay
-          remoteVideoRef.current.muted = true;
-          remoteVideoRef.current.srcObject = stream;
-          remoteVideoRef.current.play()
-            .then(() => {
-              if (showDebug) console.log("✅ Remote playing (muted)");
-              setTimeout(() => {
-                // do not auto unmute — leave to user gesture
-              }, 500);
-            })
-            .catch((e) => {
-              if (showDebug) console.log("Remote play failed (autoplay?)", e);
-            });
-        }
-      } else {
-        // Fallback: create stream from incoming tracks
-        const inboundStream = new MediaStream();
-        inboundStream.addTrack(event.track);
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.muted = true;
-          remoteVideoRef.current.srcObject = inboundStream;
-          remoteVideoRef.current.play().catch((e) => {
-            if (showDebug) console.log("Remote play failed (autoplay?)", e);
-          });
-        }
+      const stream = event.streams && event.streams[0] ? event.streams[0] : (() => {
+        const s = new MediaStream();
+        if (event.track) s.addTrack(event.track);
+        return s;
+      })();
+
+      // Attach to remote video (muted to satisfy autoplay rules)
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.muted = true; // keep video muted (autoplay)
+        remoteVideoRef.current.srcObject = stream;
+        remoteVideoRef.current.play().catch((e) => {
+          if (showDebug) console.log("remoteVideo autoplay blocked:", e);
+        });
       }
+
+      // Attach to remote audio element (we will attempt to play it unmuted)
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = stream;
+        // Try to play remote audio. If browser blocks, we'll show Unmute button.
+        remoteAudioRef.current.play()
+          .then(() => {
+            setIsAudioPlaying(true);
+            setAudioBlocked(false);
+            if (showDebug) console.log("✅ Remote audio playing");
+          })
+          .catch((err) => {
+            // Autoplay blocked — require user gesture
+            setAudioBlocked(true);
+            setIsAudioPlaying(false);
+            if (showDebug) console.log("🔇 Remote audio autoplay blocked:", err);
+          });
+      }
+
       setIsRemoteConnected(true);
       toast.success("Connected! 🎥");
     };
@@ -781,7 +1195,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       if (showDebug) console.log("🧊 ICE state:", pc.iceConnectionState);
     };
 
-    // Add local tracks AFTER handlers set
+    // Add local tracks (video + audio)
     if (localStream.current) {
       if (showDebug) console.log("🎥 Adding local tracks");
       localStream.current.getTracks().forEach((track) => {
@@ -793,7 +1207,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       });
     }
 
-    // Drain pending remote ICE
+    // Add pending remote ICE candidates
     if (pendingCandidates.current.length > 0) {
       pendingCandidates.current.forEach(async (c) => {
         try {
@@ -810,7 +1224,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
     return pc;
   };
 
-  // Create offer flow (used when peer-joined event arrives)
+  // create & send offer helper
   const createAndSendOffer = async () => {
     try {
       const pc = createPeer();
@@ -828,22 +1242,16 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
   // ---------------- SOCKET SETUP ----------------
   useEffect(() => {
     if (showDebug) console.log("🔌 Setup:", sessionId, role);
+    if (!socket.connected) socket.connect();
 
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    // Peer joined handler — start negotiation as initiator
     const onPeerJoined = async (peerId) => {
       try {
         if (showDebug) console.log("SIGNAL: peer-joined ->", peerId);
-        // Ensure local stream ready
         let tries = 0;
         while (!localStream.current && tries < 6) {
           await new Promise((r) => setTimeout(r, 300));
           tries++;
         }
-        // start offer
         await createAndSendOffer();
       } catch (err) {
         console.error("onPeerJoined error:", err);
@@ -853,13 +1261,11 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
     const onOffer = async ({ offer, from }) => {
       try {
         if (showDebug) console.log("SIGNAL: offer received from", from);
-        // ensure local stream ready
         let tries = 0;
         while (!localStream.current && tries < 6) {
           await new Promise((r) => setTimeout(r, 300));
           tries++;
         }
-
         const pc = createPeer();
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await pc.createAnswer();
@@ -876,10 +1282,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       try {
         if (showDebug) console.log("SIGNAL: answer received from", from);
         const pc = peerConnection.current;
-        if (!pc) {
-          if (showDebug) console.warn("No peerConnection when answer arrived");
-          return;
-        }
+        if (!pc) return;
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
         if (showDebug) console.log("✅ Remote description (answer) set");
       } catch (err) {
@@ -931,11 +1334,15 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
         if (showDebug) console.log("📹 Camera...");
         stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: true,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 48000,
+          },
         });
 
         localStream.current = stream;
-        if (showDebug) console.log("✅ Camera ready");
+        if (showDebug) console.log("✅ Camera & mic ready");
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
@@ -958,7 +1365,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
         setTimeout(joinRoom, 500);
       } catch (err) {
         console.error("❌ Camera:", err);
-        handleError("Camera denied or not available");
+        handleError("Camera/microphone denied or not available");
       }
     };
 
@@ -978,6 +1385,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
     };
   }, [sessionId, role, showDebug]);
 
+  // Toggle local mic (mute/unmute)
   const toggleAudio = () => {
     if (localStream.current) {
       const track = localStream.current.getAudioTracks()[0];
@@ -988,6 +1396,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
     }
   };
 
+  // Toggle local camera
   const toggleVideo = () => {
     if (localStream.current) {
       const track = localStream.current.getVideoTracks()[0];
@@ -998,9 +1407,26 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
     }
   };
 
+  // Called by the user to unmute remote audio after a user gesture
+  const handleUnmuteRemote = async () => {
+    try {
+      if (!remoteAudioRef.current) return;
+      await remoteAudioRef.current.play(); // user gesture should allow this
+      setIsAudioPlaying(true);
+      setAudioBlocked(false);
+      if (showDebug) console.log("User unmuted remote audio");
+    } catch (err) {
+      if (showDebug) console.log("Failed to unmute remote audio:", err);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 p-4">
+      {/* Hidden audio element for remote audio */}
+      <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: "none" }} />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Local */}
         <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
           <video
             ref={localVideoRef}
@@ -1017,6 +1443,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
           </div>
         </div>
 
+        {/* Remote */}
         <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
           <video
             ref={remoteVideoRef}
@@ -1034,6 +1461,22 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
               Remote
             </div>
           </div>
+
+          {/* Unmute overlay if autoplay blocked */}
+          {audioBlocked && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+              <div className="text-center">
+                <div className="text-white mb-4">🔇 Audio blocked</div>
+                <button
+                  onClick={handleUnmuteRemote}
+                  className="px-4 py-2 bg-blue-600 text-white rounded"
+                >
+                  Unmute Remote
+                </button>
+              </div>
+            </div>
+          )}
+
           {!isRemoteConnected && (
             <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
               <div className="text-center text-gray-400">
