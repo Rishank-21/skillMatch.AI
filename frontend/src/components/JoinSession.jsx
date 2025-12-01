@@ -673,8 +673,7 @@
 // };
 
 // export default JoinSession;
-
-// JoinSession.jsx (patched)
+// JoinSession.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import toast from "react-hot-toast";
@@ -701,7 +700,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       socket.emit(eventName, data);
       return true;
     } catch (err) {
-      console.error(`Failed to emit ${eventName}:`, err.message);
+      console.error(`Failed to emit ${eventName}:`, err?.message || err);
       setTimeout(() => {
         try {
           socket.emit(eventName, data);
@@ -728,56 +727,48 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       ],
     });
 
-    // -------------------
-    // IMPORTANT: set handlers BEFORE adding local tracks
-    // -------------------
-   pc.ontrack = (event) => {
-  if (showDebug) console.log("🎉 ontrack event:", event);
+    // Handlers first
+    pc.ontrack = (event) => {
+      if (showDebug) console.log("🎉 ontrack event:", event);
 
-  // Prefer event.streams[0] if available
-  if (event.streams && event.streams[0]) {
-    const stream = event.streams[0];
-    if (remoteVideoRef.current) {
-      // Important: temporarily mute remote video to allow autoplay
-      remoteVideoRef.current.muted = true;
-      remoteVideoRef.current.srcObject = stream;
-      remoteVideoRef.current.play()
-        .then(() => {
-          if (showDebug) console.log("✅ Remote playing (muted)");
-          // optionally unmute after a user gesture or small delay
-          setTimeout(() => {
-            try {
-              // do not force-unmute; only unmute if you want to risk autoplay block
-              // remoteVideoRef.current.muted = false;
-            } catch (e) {}
-          }, 1000);
-        })
-        .catch((e) => {
-          if (showDebug) console.log("Remote play failed (autoplay?)", e);
-        });
-    }
-  } else {
-    // Fallback: create stream from incoming tracks
-    const inboundStream = new MediaStream();
-    inboundStream.addTrack(event.track);
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.muted = true;
-      remoteVideoRef.current.srcObject = inboundStream;
-      remoteVideoRef.current.play()
-        .catch((e) => {
-          if (showDebug) console.log("Remote play failed (autoplay?)", e);
-        });
-    }
-  }
-  setIsRemoteConnected(true);
-  toast.success("Connected! 🎥");
-};
-
+      // Prefer event.streams[0] if available
+      if (event.streams && event.streams[0]) {
+        const stream = event.streams[0];
+        if (remoteVideoRef.current) {
+          // Temporarily mute remote video to allow autoplay
+          remoteVideoRef.current.muted = true;
+          remoteVideoRef.current.srcObject = stream;
+          remoteVideoRef.current.play()
+            .then(() => {
+              if (showDebug) console.log("✅ Remote playing (muted)");
+              setTimeout(() => {
+                // do not auto unmute — leave to user gesture
+              }, 500);
+            })
+            .catch((e) => {
+              if (showDebug) console.log("Remote play failed (autoplay?)", e);
+            });
+        }
+      } else {
+        // Fallback: create stream from incoming tracks
+        const inboundStream = new MediaStream();
+        inboundStream.addTrack(event.track);
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.muted = true;
+          remoteVideoRef.current.srcObject = inboundStream;
+          remoteVideoRef.current.play().catch((e) => {
+            if (showDebug) console.log("Remote play failed (autoplay?)", e);
+          });
+        }
+      }
+      setIsRemoteConnected(true);
+      toast.success("Connected! 🎥");
+    };
 
     pc.onicecandidate = (e) => {
       if (e.candidate) {
         try {
-          const candidateObj = e.candidate.toJSON(); // ensure serializable
+          const candidateObj = e.candidate.toJSON();
           if (showDebug) console.log("🧊 Sending local ICE candidate", candidateObj);
           safeEmit("ice-candidate", { sessionId, candidate: candidateObj });
         } catch (err) {
@@ -790,7 +781,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       if (showDebug) console.log("🧊 ICE state:", pc.iceConnectionState);
     };
 
-    // add local tracks AFTER handlers are set
+    // Add local tracks AFTER handlers set
     if (localStream.current) {
       if (showDebug) console.log("🎥 Adding local tracks");
       localStream.current.getTracks().forEach((track) => {
@@ -802,7 +793,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       });
     }
 
-    // Add any pending remote ICE candidates that arrived early
+    // Drain pending remote ICE
     if (pendingCandidates.current.length > 0) {
       pendingCandidates.current.forEach(async (c) => {
         try {
@@ -819,6 +810,21 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
     return pc;
   };
 
+  // Create offer flow (used when peer-joined event arrives)
+  const createAndSendOffer = async () => {
+    try {
+      const pc = createPeer();
+      if (showDebug) console.log("📝 Creating offer");
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      safeEmit("offer", { sessionId, offer: pc.localDescription.toJSON() });
+      if (showDebug) console.log("📤 Offer sent");
+    } catch (err) {
+      console.error("❌ Offer creation error:", err);
+      handleError("Offer creation failed");
+    }
+  };
+
   // ---------------- SOCKET SETUP ----------------
   useEffect(() => {
     if (showDebug) console.log("🔌 Setup:", sessionId, role);
@@ -827,38 +833,27 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       socket.connect();
     }
 
+    // Peer joined handler — start negotiation as initiator
     const onPeerJoined = async (peerId) => {
       try {
-        if (showDebug) console.log("👤 peer joined:", peerId);
-        toast.info("Peer joined!");
-
-        // ensure we have local stream
+        if (showDebug) console.log("SIGNAL: peer-joined ->", peerId);
+        // Ensure local stream ready
         let tries = 0;
         while (!localStream.current && tries < 6) {
           await new Promise((r) => setTimeout(r, 300));
           tries++;
         }
-
-        const pc = createPeer();
-
-        if (showDebug) console.log("📝 Creating offer");
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-
-        // send a plain serializable object (sdp & type)
-        safeEmit("offer", { sessionId, offer: pc.localDescription.toJSON() });
-        if (showDebug) console.log("📤 Offer sent");
+        // start offer
+        await createAndSendOffer();
       } catch (err) {
-        console.error("❌ Offer error:", err);
-        handleError("Offer creation failed");
+        console.error("onPeerJoined error:", err);
       }
     };
 
-    const onOffer = async ({ offer }) => {
+    const onOffer = async ({ offer, from }) => {
       try {
-        if (showDebug) console.log("📥 Received OFFER");
-
-        // Wait for local stream to be ready
+        if (showDebug) console.log("SIGNAL: offer received from", from);
+        // ensure local stream ready
         let tries = 0;
         while (!localStream.current && tries < 6) {
           await new Promise((r) => setTimeout(r, 300));
@@ -866,13 +861,9 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
         }
 
         const pc = createPeer();
-
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
-
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-
-        // send plain object
         safeEmit("answer", { sessionId, answer: pc.localDescription.toJSON() });
         if (showDebug) console.log("📤 Answer sent");
       } catch (err) {
@@ -881,15 +872,14 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       }
     };
 
-    const onAnswer = async ({ answer }) => {
+    const onAnswer = async ({ answer, from }) => {
       try {
-        if (showDebug) console.log("📥 Received ANSWER");
+        if (showDebug) console.log("SIGNAL: answer received from", from);
         const pc = peerConnection.current;
         if (!pc) {
           if (showDebug) console.warn("No peerConnection when answer arrived");
           return;
         }
-        // Always try to set remote description (more robust)
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
         if (showDebug) console.log("✅ Remote description (answer) set");
       } catch (err) {
@@ -897,7 +887,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       }
     };
 
-    const onIce = async ({ candidate }) => {
+    const onIce = async ({ candidate, from }) => {
       try {
         if (!candidate) return;
         if (peerConnection.current && peerConnection.current.remoteDescription) {
@@ -949,7 +939,6 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
-          // autoplay muted local preview
           localVideoRef.current.muted = true;
           await localVideoRef.current.play().catch(() => {});
         }
