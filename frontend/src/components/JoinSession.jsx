@@ -675,7 +675,6 @@
 // export default JoinSession;
 
 
-
 import React, { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import toast from 'react-hot-toast';
@@ -697,10 +696,29 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
         toast.error(message);
     };
 
+    // ========== SAFE EMIT (Catches Socket.IO internal errors) ==========
+    const safeEmit = (eventName, data) => {
+        try {
+            socket.emit(eventName, data);
+            return true;
+        } catch (err) {
+            console.error(`Failed to emit ${eventName}:`, err.message);
+            // Retry once after delay
+            setTimeout(() => {
+                try {
+                    socket.emit(eventName, data);
+                } catch (retryErr) {
+                    console.error(`Retry failed for ${eventName}`);
+                }
+            }, 100);
+            return false;
+        }
+    };
+
     // ========== CREATE PEER ==========
     const createPeer = () => {
         if (peerConnection.current) {
-            console.log("⚠️ Peer exists, reusing");
+            console.log("⚠️ Peer exists");
             return peerConnection.current;
         }
 
@@ -713,16 +731,15 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
             ],
         });
 
-        // Add local tracks FIRST
+        // Add tracks
         if (localStream.current) {
-            console.log("🎥 Adding tracks:");
+            console.log("🎥 Adding tracks");
             localStream.current.getTracks().forEach((track) => {
-                console.log(`  ➕ ${track.kind}`);
                 pc.addTrack(track, localStream.current);
             });
         }
 
-        // ONTRACK - MOST IMPORTANT
+        // ONTRACK
         pc.ontrack = (event) => {
             console.log("🎉 🎉 🎉 REMOTE TRACK!");
             
@@ -736,14 +753,14 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
                         setIsRemoteConnected(true);
                         toast.success("Connected! 🎥");
                     })
-                    .catch(e => console.error("Play err:", e));
+                    .catch(e => console.error("Play error:", e));
             }
         };
 
         pc.onicecandidate = (e) => {
             if (e.candidate) {
-                console.log("🧊 Sending ICE");
-                socket.emit("ice-candidate", { sessionId, candidate: e.candidate });
+                console.log("🧊 ICE");
+                safeEmit("ice-candidate", { sessionId, candidate: e.candidate });
             }
         };
 
@@ -771,7 +788,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
             socket.connect();
         }
 
-        // ========== PEER JOINED (WRAPPED IN TRY-CATCH) ==========
+        // ========== PEER JOINED ==========
         const onPeerJoined = async (peerId) => {
             try {
                 console.log("👤 👤 👤 PEER:", peerId);
@@ -782,7 +799,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
                 }
 
                 const pc = createPeer();
-                await new Promise(r => setTimeout(r, 300));
+                await new Promise(r => setTimeout(r, 500));
 
                 console.log("📝 Creating offer");
                 const offer = await pc.createOffer({
@@ -793,13 +810,13 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
                 await pc.setLocalDescription(offer);
                 console.log("📤 Sending offer");
                 
-                socket.emit("offer", { sessionId, offer });
+                safeEmit("offer", { sessionId, offer });
             } catch (err) {
-                console.error("❌ Offer error:", err);
+                console.error("❌ Offer error:", err.message);
             }
         };
 
-        // ========== OFFER (WRAPPED) ==========
+        // ========== OFFER ==========
         const onOffer = async ({ offer }) => {
             try {
                 console.log("📥 📥 📥 OFFER");
@@ -810,7 +827,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
 
                 const pc = createPeer();
 
-                console.log("📝 Set remote (offer)");
+                console.log("📝 Set remote");
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
                 console.log("📝 Creating answer");
@@ -819,25 +836,25 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
                 await pc.setLocalDescription(answer);
                 console.log("📤 Sending answer");
                 
-                socket.emit("answer", { sessionId, answer });
+                safeEmit("answer", { sessionId, answer });
             } catch (err) {
-                console.error("❌ Answer error:", err);
+                console.error("❌ Answer error:", err.message);
             }
         };
 
-        // ========== ANSWER (WRAPPED) ==========
+        // ========== ANSWER ==========
         const onAnswer = async ({ answer }) => {
             try {
                 console.log("📥 📥 📥 ANSWER");
 
                 const pc = peerConnection.current;
                 if (pc && pc.signalingState !== "stable") {
-                    console.log("📝 Set remote (answer)");
+                    console.log("📝 Set remote");
                     await pc.setRemoteDescription(new RTCSessionDescription(answer));
                     console.log("✅ Done!");
                 }
             } catch (err) {
-                console.error("❌ Set answer error:", err);
+                console.error("❌ Answer error:", err.message);
             }
         };
 
@@ -857,7 +874,6 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
             setIsConnecting(false);
         };
 
-        // Register listeners
         socket.on("connect", onConnect);
         socket.on("peer-joined", onPeerJoined);
         socket.on("offer", onOffer);
@@ -897,8 +913,8 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
 
                     if (socket.connected) {
                         console.log("🚪 Joining:", sessionId, "as", role);
-                        socket.emit("join-session", sessionId);
-                        socket.emit("joined-session", { sessionId, role });
+                        safeEmit("join-session", sessionId);
+                        safeEmit("joined-session", { sessionId, role });
                         hasJoinedRoom.current = true;
                     } else {
                         setTimeout(joinRoom, 500);
@@ -965,11 +981,6 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
                             You ({userName})
                         </div>
                     </div>
-                    {isVideoOff && (
-                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                            <div className="text-6xl">📹</div>
-                        </div>
-                    )}
                 </div>
 
                 {/* Remote */}
@@ -997,12 +1008,11 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
                 </div>
             </div>
 
-            {/* Controls */}
             <div className="flex justify-center gap-4">
-                <button onClick={toggleAudio} className={`px-6 py-3 rounded-xl ${isAudioMuted ? 'bg-red-600' : 'bg-gray-700'} text-white font-semibold`}>
+                <button onClick={toggleAudio} className={`px-6 py-3 rounded-xl ${isAudioMuted ? 'bg-red-600' : 'bg-gray-700'} text-white`}>
                     {isAudioMuted ? "🔇" : "🔊"}
                 </button>
-                <button onClick={toggleVideo} className={`px-6 py-3 rounded-xl ${isVideoOff ? 'bg-red-600' : 'bg-gray-700'} text-white font-semibold`}>
+                <button onClick={toggleVideo} className={`px-6 py-3 rounded-xl ${isVideoOff ? 'bg-red-600' : 'bg-gray-700'} text-white`}>
                     {isVideoOff ? "📹" : "🎥"}
                 </button>
             </div>
