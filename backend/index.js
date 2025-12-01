@@ -150,6 +150,148 @@
 // });
 
 
+// // ==========================
+// // SkillMatch.AI - FIXED index.js
+// // ==========================
+// import express from "express";
+// import dotenv from "dotenv";
+// import cors from "cors";
+// dotenv.config();
+
+// import cookieParser from "cookie-parser";
+// import { connectDB } from "./config/db.js";
+
+// import authRoutes from "./routes/authRoutes.js";
+// import mentorRoutes from "./routes/mentorRoutes.js";
+// import resumeRoutes from "./routes/resumeRoutes.js";
+// import getMentorRoutes from "./routes/getMentorRoutes.js";
+// import sessionRoutes from "./routes/sessionRoutes.js";
+// import webhookRoutes from "./routes/webhookRoutes.js";
+
+// import "./config/sessionReminder.js";
+// import "./config/sessionStatusUpdater.js";
+
+// import path from "path";
+// import { createServer } from "http";
+// import { Server } from "socket.io";
+
+// import Session from "./models/sessionModel.js";
+
+// const app = express();
+// const server = createServer(app);
+
+// // -------------------------------
+// // SOCKET.IO SETUP
+// // -------------------------------
+// const io = new Server(server, {
+//   cors: {
+//     origin: "https://skill-match-ai-ashy.vercel.app",
+//     methods: ["GET", "POST"],
+//     credentials: true,
+//   },
+// });
+
+// // SOCKET EVENTS
+// io.on("connection", (socket) => {
+//   console.log("🟢 User connected:", socket.id);
+
+//   socket.on("join-session", (sessionId) => {
+//     socket.join(sessionId);
+
+//     const room = io.sockets.adapter.rooms.get(sessionId);
+//     const participants = room ? room.size : 0;
+
+//     if (participants > 1) {
+//       socket.to(sessionId).emit("peer-joined", socket.id);
+//     }
+//   });
+
+//   socket.on("joined-session", async ({ sessionId, role }) => {
+//     try {
+//       const session = await Session.findById(sessionId);
+//       if (!session) return;
+
+//       const now = new Date();
+//       if (role === "mentor") {
+//         if (!session.mentorJoinedAt) session.mentorJoinedAt = now;
+//       } else {
+//         if (!session.userJoinedAt) {
+//           session.userJoinedAt = now;
+//           session.joined = true;
+//         }
+//       }
+//       await session.save();
+//     } catch (err) {
+//       console.error("joined-session error:", err);
+//     }
+//   });
+
+//   socket.on("offer", (data) => {
+//     socket.to(data.sessionId).emit("offer", data);
+//   });
+
+//   socket.on("answer", (data) => {
+//     socket.to(data.sessionId).emit("answer", data);
+//   });
+
+//   socket.on("ice-candidate", (data) => {
+//     socket.to(data.sessionId).emit("ice-candidate", data);
+//   });
+
+//   socket.on("disconnect", () => {
+//     console.log("🔴 User disconnected:", socket.id);
+//   });
+// });
+
+// // -------------------------------
+// // MIDDLEWARE
+// // -------------------------------
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+// app.use(cookieParser());
+
+// // CORS CONFIG — IMPORTANT
+// app.use(
+//   cors({
+//     origin: "https://skill-match-ai-ashy.vercel.app",
+//     credentials: true,
+//   })
+// );
+
+// // STATIC UPLOADS
+// app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// // DB CONNECT
+// connectDB();
+
+// // -------------------------------
+// // ROUTES
+// // -------------------------------
+// app.use("/api/auth", authRoutes);
+// app.use("/api/mentor", mentorRoutes);
+// app.use("/api/resume", resumeRoutes);
+// app.use("/api", getMentorRoutes);
+// app.use("/api/session", sessionRoutes);
+
+// // Stripe webhook must use raw body
+// app.post(
+//   "/webhook/stripe",
+//   express.raw({ type: "application/json" }),
+//   webhookRoutes
+// );
+
+// // -------------------------------
+// // SERVER START
+// // -------------------------------
+// const port = process.env.PORT || 5000;
+
+// server.listen(port, () => {
+//   console.log(`🚀 Server running on port ${port}`);
+//   console.log(`🔌 Socket.IO ready`);
+// });
+
+
+
 // ==========================
 // SkillMatch.AI - FIXED index.js
 // ==========================
@@ -185,61 +327,113 @@ const server = createServer(app);
 // -------------------------------
 const io = new Server(server, {
   cors: {
-    origin: "https://skill-match-ai-ashy.vercel.app",
+    origin: [
+      "https://skill-match-ai-ashy.vercel.app",
+      "http://localhost:5173", // For local testing
+      "http://localhost:3000"
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ["websocket", "polling"],
 });
 
 // SOCKET EVENTS
 io.on("connection", (socket) => {
   console.log("🟢 User connected:", socket.id);
 
+  // ========== JOIN SESSION ==========
   socket.on("join-session", (sessionId) => {
+    console.log(`📥 join-session event from ${socket.id} for session: ${sessionId}`);
+    
     socket.join(sessionId);
 
     const room = io.sockets.adapter.rooms.get(sessionId);
     const participants = room ? room.size : 0;
+    const socketIds = room ? Array.from(room) : [];
+
+    console.log(`📊 Session ${sessionId} now has ${participants} participant(s)`);
+    console.log(`🔗 Socket IDs in room:`, socketIds);
 
     if (participants > 1) {
+      console.log(`✅ Emitting peer-joined to others in session ${sessionId}`);
+      console.log(`   Sender: ${socket.id}`);
+      console.log(`   Recipients:`, socketIds.filter(id => id !== socket.id));
+      
       socket.to(sessionId).emit("peer-joined", socket.id);
+    } else {
+      console.log(`⏳ First user in session ${sessionId}, waiting for peer...`);
     }
   });
 
+  // ========== JOINED SESSION (DB Update) ==========
   socket.on("joined-session", async ({ sessionId, role }) => {
+    console.log(`📝 joined-session: ${socket.id} joined as "${role}" in ${sessionId}`);
+    
     try {
       const session = await Session.findById(sessionId);
-      if (!session) return;
+      if (!session) {
+        console.log(`❌ Session ${sessionId} not found in database`);
+        return;
+      }
 
       const now = new Date();
       if (role === "mentor") {
-        if (!session.mentorJoinedAt) session.mentorJoinedAt = now;
+        if (!session.mentorJoinedAt) {
+          session.mentorJoinedAt = now;
+          console.log(`✅ Mentor joined at ${now.toISOString()}`);
+        }
       } else {
         if (!session.userJoinedAt) {
           session.userJoinedAt = now;
           session.joined = true;
+          console.log(`✅ User joined at ${now.toISOString()}`);
         }
       }
       await session.save();
+      console.log(`💾 Session ${sessionId} updated in database`);
     } catch (err) {
-      console.error("joined-session error:", err);
+      console.error(`❌ Error updating session ${sessionId}:`, err.message);
     }
   });
 
+  // ========== OFFER ==========
   socket.on("offer", (data) => {
+    console.log(`📤 Forwarding OFFER from ${socket.id} to session ${data.sessionId}`);
     socket.to(data.sessionId).emit("offer", data);
   });
 
+  // ========== ANSWER ==========
   socket.on("answer", (data) => {
+    console.log(`📤 Forwarding ANSWER from ${socket.id} to session ${data.sessionId}`);
     socket.to(data.sessionId).emit("answer", data);
   });
 
+  // ========== ICE CANDIDATE ==========
   socket.on("ice-candidate", (data) => {
+    console.log(`🧊 Forwarding ICE candidate from ${socket.id} to session ${data.sessionId}`);
     socket.to(data.sessionId).emit("ice-candidate", data);
   });
 
-  socket.on("disconnect", () => {
-    console.log("🔴 User disconnected:", socket.id);
+  // ========== DISCONNECT ==========
+  socket.on("disconnect", (reason) => {
+    console.log(`🔴 User disconnected: ${socket.id}, reason: ${reason}`);
+  });
+
+  // ========== ERROR HANDLING ==========
+  socket.on("error", (error) => {
+    console.error(`❌ Socket error for ${socket.id}:`, error);
+  });
+});
+
+// Monitor Socket.IO engine errors
+io.engine.on("connection_error", (err) => {
+  console.error("❌ Socket.IO Engine Error:", {
+    message: err.message,
+    code: err.code,
+    context: err.context
   });
 });
 
@@ -250,11 +444,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// CORS CONFIG — IMPORTANT
+// CORS CONFIG
 app.use(
   cors({
-    origin: "https://skill-match-ai-ashy.vercel.app",
+    origin: [
+      "https://skill-match-ai-ashy.vercel.app",
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -280,6 +480,15 @@ app.post(
   webhookRoutes
 );
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    socketConnections: io.engine.clientsCount
+  });
+});
+
 // -------------------------------
 // SERVER START
 // -------------------------------
@@ -288,4 +497,5 @@ const port = process.env.PORT || 5000;
 server.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🔌 Socket.IO ready`);
+  console.log(`🌐 CORS enabled for: https://skill-match-ai-ashy.vercel.app`);
 });
