@@ -75,42 +75,10 @@
 
 // export default socket;
 
+// socket.js (recommended)
 import { io } from "socket.io-client";
 
 const SOCKET_URL = import.meta.env.VITE_WEBRTC_URL || "https://skillmatch-ai-2v8j.onrender.com";
-
-// Error suppression
-if (typeof window !== 'undefined') {
-  const _error = console.error;
-  
-  console.error = function(...args) {
-    const msg = String(args[0] || '');
-    if (
-      msg.includes('is not a function') ||
-      msg.includes('Q.info') ||
-      msg.includes('Z.info')
-    ) {
-      return;
-    }
-    return _error.apply(console, args);
-  };
-  
-  window.addEventListener('error', (e) => {
-    if (e.message && e.message.includes('is not a function')) {
-      e.stopImmediatePropagation();
-      e.preventDefault();
-      return false;
-    }
-  }, true);
-  
-  window.addEventListener('unhandledrejection', (e) => {
-    if (e.reason && String(e.reason).includes('is not a function')) {
-      e.stopImmediatePropagation();
-      e.preventDefault();
-      return false;
-    }
-  }, true);
-}
 
 export const socket = io(SOCKET_URL, {
   transports: ["websocket", "polling"],
