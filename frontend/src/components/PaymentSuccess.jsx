@@ -114,13 +114,7 @@ const PaymentSuccess = () => {
 
     useEffect(() => {
         // ✅ Enhanced: Ensure user data is available before proceeding
-        if (!userData || !userData.user || !userData.user._id) {
-            toast.error('Please log in to view your session'); // ✅ Better error message
-            setTimeout(() => {
-                navigate('/login'); // Redirect to login if no user data
-            }, 2000);
-            return; 
-        }
+        
 
         if (!sessionId) {
             toast.error("Error: Missing session ID for verification."); // ✅ Already present
