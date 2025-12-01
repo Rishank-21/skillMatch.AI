@@ -675,7 +675,6 @@
 // export default JoinSession;
 
 
-
 import React, { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import toast from 'react-hot-toast';
@@ -732,14 +731,13 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
             ],
         });
 
-        // ✨ FIX: Removed pc.addTrack from here. Tracks will be added in onPeerJoined/onOffer 
-        //          to ensure localStream is available.
+        // NOTE: pc.addTrack is now REMOVED from here. Tracks are added in onPeerJoined/onOffer.
+        // This prevents the track addition failing if localStream.current is null initially.
 
         // ONTRACK
         pc.ontrack = (event) => {
             console.log("🎉 🎉 🎉 REMOTE TRACK!");
             
-            // WebRTC streams can have multiple tracks. Use streams[0]
             if (event.streams?.[0] && remoteVideoRef.current) {
                 console.log("📺 Setting srcObject");
                 remoteVideoRef.current.srcObject = event.streams[0];
@@ -765,20 +763,17 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
             console.log("🧊", pc.iceConnectionState);
         };
 
-        // Add pending ICE (This is safe because addIceCandidate is async and handles timing)
+        // Add pending ICE
         pendingCandidates.current.forEach(async (c) => {
             try {
                 await pc.addIceCandidate(new RTCIceCandidate(c));
-            } catch (e) {
-                // Ignore silent error if remoteDescription isn't set yet (handled by onIce logic)
-            }
+            } catch (e) {}
         });
         pendingCandidates.current = [];
 
         peerConnection.current = pc;
         return pc;
     };
-// --- (Rest of the Socket Setup useEffect) ---
 
     // ========== SOCKET SETUP ==========
     useEffect(() => {
@@ -787,6 +782,21 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
         if (!socket.connected) {
             socket.connect();
         }
+
+        // Utility function to add tracks robustly
+        const addLocalTracksToPeer = (pc) => {
+            if (localStream.current) {
+                console.log("🎥 Adding tracks before SDP exchange");
+                localStream.current.getTracks().forEach((track) => {
+                    // Check if sender already exists to avoid adding duplicates
+                    if (!pc.getSenders().find(sender => sender.track === track)) {
+                        pc.addTrack(track, localStream.current);
+                    }
+                });
+                return true;
+            }
+            return false;
+        };
 
         // ========== PEER JOINED ==========
         const onPeerJoined = async (peerId) => {
@@ -803,17 +813,9 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
                 await new Promise(r => setTimeout(r, 500));
                 
                 // ✨ FIX: Add tracks here before creating the offer
-                if (localStream.current) {
-                    console.log("🎥 Adding tracks for offer");
-                    // Ensure tracks are added only if they haven't been already
-                    localStream.current.getTracks().forEach((track) => {
-                        // Check if a sender for this track already exists
-                        if (!pc.getSenders().find(sender => sender.track === track)) {
-                            pc.addTrack(track, localStream.current);
-                        }
-                    });
-                } else {
-                    console.warn("⚠️ Cannot create offer: local stream is not available yet.");
+                if (!addLocalTracksToPeer(pc)) {
+                    console.error("❌ Aborting offer: Local stream unavailable.");
+                    toast.error("Video/Audio stream failed to load.");
                     return; 
                 }
 
@@ -845,16 +847,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
                 const pc = createPeer();
                 
                 // ✨ FIX: Add tracks here before creating the answer
-                if (localStream.current) {
-                    console.log("🎥 Adding tracks for answer");
-                    localStream.current.getTracks().forEach((track) => {
-                        if (!pc.getSenders().find(sender => sender.track === track)) {
-                            pc.addTrack(track, localStream.current);
-                        }
-                    });
-                } else {
-                    console.warn("⚠️ Cannot create answer: local stream is not available yet.");
-                }
+                addLocalTracksToPeer(pc);
 
                 console.log("📝 Set remote");
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -895,9 +888,7 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
                 } else {
                     pendingCandidates.current.push(candidate);
                 }
-            } catch (e) {
-                // This is normal if candidate arrives before remoteDescription is set.
-            }
+            } catch (e) {}
         };
 
         const onConnect = () => {
@@ -922,7 +913,6 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
 
     // ========== CAMERA ==========
     useEffect(() => {
-        // ... (No change required in the camera setup logic)
         let stream;
 
         const startCamera = async () => {
@@ -997,7 +987,6 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
 
     return (
         <div className="flex flex-col gap-6 p-4">
-            {/* ... (Rest of the JSX remains the same) ... */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Local */}
                 <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
