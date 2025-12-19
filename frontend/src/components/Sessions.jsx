@@ -669,17 +669,29 @@ const Sessions = () => {
           `${import.meta.env.VITE_API_URL}/session/all`,
           { withCredentials: true }
         );
-        setSessions(result.data);
+        // After API response
+        const uniqueSessions = Array.from(
+          new Map(result.data.map((s) => [s._id, s])).values()
+        );
+        setSessions(uniqueSessions);
+
         setLoading(false);
-        
+
         // ✅ Toast for session count
         if (result.data.length > 0) {
-          const upcoming = result.data.filter(s => s.status === 'upcoming').length;
+          const upcoming = result.data.filter(
+            (s) => s.status === "upcoming"
+          ).length;
           if (upcoming > 0) {
-            toast.success(`You have ${upcoming} upcoming session${upcoming > 1 ? 's' : ''}!`, {
-              duration: 3000,
-              icon: '📅'
-            });
+            toast.success(
+              `You have ${upcoming} upcoming session${
+                upcoming > 1 ? "s" : ""
+              }!`,
+              {
+                duration: 3000,
+                icon: "📅",
+              }
+            );
           }
         }
       } catch (error) {
