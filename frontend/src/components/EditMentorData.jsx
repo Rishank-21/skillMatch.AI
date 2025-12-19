@@ -1024,7 +1024,8 @@ const EditMentorData = ({ activeTab, setActiveTab }) => {
                 value={skillInput}
                 onChange={(e) => setSkillInput(e.target.value)}
                 onKeyDown={handleInputKeyDown}
-                className="bg-slate-800/50 border-2 border-slate-700 rounded-xl p-3 flex-1 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm text-white placeholder-slate-500 transition-all duration-300"
+                className="bg-slate-800/50 border-2 border-slate-700 w-full max-w-full min-w-0
+ rounded-xl p-3 flex-1 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm text-white placeholder-slate-500 transition-all duration-300"
                 disabled={isSaving}
               />
               <button
