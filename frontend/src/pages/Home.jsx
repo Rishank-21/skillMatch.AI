@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import useGetCurrentUser from "../hooks/useGetCurrentUser";
 import useGetMentorData from "../hooks/useGetMentorData";
 import UserDashboard from "../components/UserDashboard";
-import MentorDashboard from "../components/MentorDashboard";
+import MentorDashboard from "../components/MentorDashboard.jsx";
 import { useNavigate } from "react-router-dom";
 
 function Home({ scrollToId }) {
