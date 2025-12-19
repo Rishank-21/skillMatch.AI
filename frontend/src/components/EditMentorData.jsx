@@ -126,7 +126,7 @@
 //           <div
 //             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
 //             // inline styles to force a new stacking context and remove seams
-//             style={{ isolation: "isolate", transform: "translateZ(0)" }}
+//             style={{ isolation: "isolate" }}
 //           >
 //             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
 //               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -170,7 +170,7 @@
 //           {/* Skills Card */}
 //           <div
 //             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
-//             style={{ isolation: "isolate", transform: "translateZ(0)" }}
+//             style={{ isolation: "isolate" }}
 //           >
 //             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
 //               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -229,7 +229,7 @@
 //           {/* Bio Card */}
 //           <div
 //             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
-//             style={{ isolation: "isolate", transform: "translateZ(0)" }}
+//             style={{ isolation: "isolate" }}
 //           >
 //             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
 //               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -255,7 +255,7 @@
 //           {/* Time Slots Card */}
 //           <div
 //             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
-//             style={{ isolation: "isolate", transform: "translateZ(0)" }}
+//             style={{ isolation: "isolate" }}
 //           >
 //             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
 //               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -538,7 +538,7 @@
 //           <div
 //             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
 //             // inline styles to force a new stacking context and remove seams
-//             style={{ isolation: "isolate", transform: "translateZ(0)" }}
+//             style={{ isolation: "isolate" }}
 //           >
 //             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
 //               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -582,7 +582,7 @@
 //           {/* Skills Card */}
 //           <div
 //             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
-//             style={{ isolation: "isolate", transform: "translateZ(0)" }}
+//             style={{ isolation: "isolate" }}
 //           >
 //             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
 //               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -644,7 +644,7 @@
 //           {/* Bio Card */}
 //           <div
 //             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
-//             style={{ isolation: "isolate", transform: "translateZ(0)" }}
+//             style={{ isolation: "isolate" }}
 //           >
 //             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
 //               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -671,7 +671,7 @@
 //           {/* Time Slots Card */}
 //           <div
 //             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
-//             style={{ isolation: "isolate", transform: "translateZ(0)" }}
+//             style={{ isolation: "isolate" }}
 //           >
 //             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
 //               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -955,7 +955,7 @@ const EditMentorData = ({ activeTab, setActiveTab }) => {
   return (
     <div className="w-full">
       {/* grid: note the 'isolate' to prevent backdrop-bleed between columns */}
-      <div className="grid lg:grid-cols-2 lg:gap-x-10 gap-y-10 isolate">
+      <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-10 gap-y-10 isolate max-w-full overflow-x-hidden">
 
         {/* Left Column */}
         <div className="space-y-10">
@@ -964,7 +964,7 @@ const EditMentorData = ({ activeTab, setActiveTab }) => {
           <div
             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
             // inline styles to force a new stacking context and remove seams
-            style={{ isolation: "isolate", transform: "translateZ(0)" }}
+            style={{ isolation: "isolate" }}
           >
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -1008,7 +1008,7 @@ const EditMentorData = ({ activeTab, setActiveTab }) => {
           {/* Skills Card */}
           <div
             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
-            style={{ isolation: "isolate", transform: "translateZ(0)" }}
+            style={{ isolation: "isolate" }}
           >
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -1070,7 +1070,7 @@ const EditMentorData = ({ activeTab, setActiveTab }) => {
           {/* Bio Card */}
           <div
             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
-            style={{ isolation: "isolate", transform: "translateZ(0)" }}
+            style={{ isolation: "isolate" }}
           >
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">
@@ -1097,7 +1097,7 @@ const EditMentorData = ({ activeTab, setActiveTab }) => {
           {/* Time Slots Card */}
           <div
             className="bg-slate-900/50 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-800 p-6 overflow-hidden"
-            style={{ isolation: "isolate", transform: "translateZ(0)" }}
+            style={{ isolation: "isolate" }}
           >
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
               <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl border border-cyan-500/30">

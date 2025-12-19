@@ -20,7 +20,7 @@ function Home({ scrollToId }) {
   const role = userData?.user?.role
 
   return (
-    <div className='w-screen min-h-screen flex flex-col items-center bg-slate-950 overflow-x-hidden relative'>
+    <div className='w-full min-h-screen flex flex-col items-center bg-slate-950 overflow-x-hidden relative'>
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
