@@ -1157,7 +1157,7 @@ function MentorDashboard() {
 
       <Nav />
       {!mentorData ? (
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+        <div className="z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
           {/* Header */}
           <div className="text-center mb-8 lg:mb-12">
             <div className="inline-flex items-center justify-center w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-2xl mb-6 shadow-xl shadow-purple-500/30">
