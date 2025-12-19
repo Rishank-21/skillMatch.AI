@@ -391,7 +391,12 @@ const MentorSessions = () => {
           `${import.meta.env.VITE_API_URL}/session/mentor-session`,
           { withCredentials: true }
         );
-        setSessions(result.data);
+        const uniqueSessions = Array.from(
+          new Map(result.data.map((s) => [s._id, s])).values()
+        );
+
+        setSessions(uniqueSessions);
+
         
         // ✅ Toast for session count
         if (result.data.length > 0) {
