@@ -1157,7 +1157,7 @@ function MentorDashboard() {
 
       <Nav />
       {!mentorData ? (
-        <div className="z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 overflow-x-hidden">
+        <div className="z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 overflow-x-hidden">
           {/* Header */}
           <div className="text-center mb-8 lg:mb-12">
             <div className="inline-flex items-center justify-center w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-2xl mb-6 shadow-xl shadow-purple-500/30">
@@ -1172,7 +1172,7 @@ function MentorDashboard() {
           </div>
 
           {/* Two Column Layout for Desktop */}
-          <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
+          <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 grid-cols-1">
             {/* Left Column */}
             <div className="space-y-6">
               {/* Profile Photo Card */}
@@ -1211,6 +1211,7 @@ function MentorDashboard() {
                         type="file"
                         accept="image/*"
                         className="block w-full text-sm text-slate-400
+                          max-w-full min-w-0
                           file:mr-4 file:py-2.5 file:px-5
                           file:rounded-xl file:border-0
                           file:text-sm file:font-semibold
@@ -1243,7 +1244,8 @@ function MentorDashboard() {
                   </div>
                   <input
                     type="number"
-                    className="bg-slate-800/50 border-2 border-slate-700 rounded-xl p-4 w-full outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm pl-10 pr-20 text-white placeholder-slate-500 transition-all duration-300"
+                    className="bg-slate-800/50 border-2 border-slate-700 rounded-xl p-4 w-full outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm pl-10 pr-20 max-w-full min-w-0
+ text-white placeholder-slate-500 transition-all duration-300"
                     placeholder="Enter your hourly rate"
                     value={fee}
                     onChange={(e) => setFee(e.target.value)}
@@ -1270,7 +1272,8 @@ function MentorDashboard() {
                 <div className="flex gap-2 mb-4">
                   <input
                     type="text"
-                    className="bg-slate-800/50 border-2 border-slate-700 rounded-xl p-3 flex-1 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm text-white placeholder-slate-500 transition-all duration-300"
+                    className="bg-slate-800/50 border-2 w-full max-w-full min-w-0
+ border-slate-700 rounded-xl p-3 flex-1 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm text-white placeholder-slate-500 transition-all duration-300"
                     placeholder="e.g., React, Node.js..."
                     value={skillInput}
                     onChange={(e) => setSkillInput(e.target.value)}
@@ -1326,7 +1329,8 @@ function MentorDashboard() {
                   <textarea
                     name="bio"
                     placeholder="Share your experience, expertise, and what makes you a great mentor..."
-                    className="bg-slate-800/50 border-2 border-slate-700 rounded-xl p-4 w-full outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent h-40 lg:h-48 shadow-sm resize-none text-white placeholder-slate-500 transition-all duration-300"
+                    className="bg-slate-800/50 border-2 max-w-full min-w-0
+ border-slate-700 rounded-xl p-4 w-full outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent h-40 lg:h-48 shadow-sm resize-none text-white placeholder-slate-500 transition-all duration-300"
                     maxLength={500}
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
@@ -1352,13 +1356,15 @@ function MentorDashboard() {
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]} // ✅ Prevent past dates in UI
-                    className="bg-slate-800/50 border-2 border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm text-white transition-all duration-300"
+                    className="bg-slate-800/50 border-2 w-full max-w-full min-w-0
+ border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm text-white transition-all duration-300"
                   />
                   <input
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="bg-slate-800/50 border-2 border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm text-white transition-all duration-300"
+                    className="bg-slate-800/50 border-2 border-slate-700 w-full max-w-full min-w-0
+ rounded-xl p-3 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent shadow-sm text-white transition-all duration-300"
                   />
                 </div>
                 <button
