@@ -1101,6 +1101,16 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
   const [audioBlocked, setAudioBlocked] = useState(false); // autoplay blocked
   const pendingCandidates = useRef([]);
   const hasJoinedRoom = useRef(false);
+  const [isMobile , setIsMobile] = useState(false);
+
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+    
+  },[]);
 
   const handleError = (message, err = null) => {
     console.error("❌", message, err);
@@ -1425,68 +1435,82 @@ const JoinSession = ({ sessionId, userName, role = "user", showDebug = false }) 
       {/* Hidden audio element for remote audio */}
       <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: "none" }} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Local */}
-        <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover bg-gray-900"
-          />
-          <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-2 rounded-lg text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              You ({userName})
-            </div>
-          </div>
-        </div>
+      {/* ================= VIDEO AREA ================= */}
+<div className="relative w-full h-[70vh] lg:h-auto">
 
-        {/* Remote */}
-        <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover bg-gray-900"
-          />
-          <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-2 rounded-lg text-sm">
-            <div className="flex items-center gap-2">
-              <div
-                className={`w-2 h-2 rounded-full ${
-                  isRemoteConnected ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                }`}
-              ></div>
-              Remote
-            </div>
-          </div>
+  {/* ================= MOBILE ================= */}
+  {isMobile ? (
+    <>
+      {/* 🔵 REMOTE VIDEO (FULL SCREEN) */}
+      <div className="absolute inset-0 rounded-2xl overflow-hidden border border-gray-700">
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover bg-gray-900"
+        />
+      </div>
 
-          {/* Unmute overlay if autoplay blocked */}
-          {audioBlocked && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
-              <div className="text-center">
-                <div className="text-white mb-4">🔇 Audio blocked</div>
-                <button
-                  onClick={handleUnmuteRemote}
-                  className="px-4 py-2 bg-blue-600 text-white rounded"
-                >
-                  Unmute Remote
-                </button>
-              </div>
-            </div>
-          )}
+      {/* 🟢 LOCAL VIDEO (PiP) */}
+      <div className="absolute bottom-4 right-4 w-28 h-40 rounded-xl overflow-hidden border border-white/30 shadow-lg bg-black z-20">
+        <video
+          ref={localVideoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover scale-x-[-1]"
+        />
+      </div>
 
-          {!isRemoteConnected && (
-            <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-              <div className="text-center text-gray-400">
-                <div className="text-6xl mb-4">👤</div>
-                <div>Waiting...</div>
-              </div>
-            </div>
-          )}
+      {/* Labels */}
+      <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-2 rounded-lg text-sm z-20">
+        Remote
+      </div>
+    </>
+  ) : (
+    /* ================= DESKTOP ================= */
+    <div className="grid grid-cols-2 gap-6">
+      {/* Local */}
+      <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
+        <video
+          ref={localVideoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover bg-gray-900 scale-x-[-1]"
+        />
+        <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-2 rounded-lg text-sm">
+          You ({userName})
         </div>
       </div>
+
+      {/* Remote */}
+      <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover bg-gray-900"
+        />
+        <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-2 rounded-lg text-sm">
+          Remote
+        </div>
+
+        {audioBlocked && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+            <button
+              onClick={handleUnmuteRemote}
+              className="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              Unmute Remote
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+</div>
+
 
       <div className="flex justify-center gap-4">
         <button
